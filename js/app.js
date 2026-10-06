@@ -289,12 +289,6 @@ function importaciones(){
     <div class="panel"><header><h3>Factores de importación</h3><span class="sub">Todas las importaciones y cotizaciones · pestañas de costeo del Sheets</span></header>${factorTable()}</div>
     <div class="panel"><header><h3>Evolución del factor</h3><div class="seg" id="fm" style="margin-left:auto">${[['linea','Tipo de producto'],['prov','Proveedor']].map(([k,l])=>`<button aria-pressed="${factorModo===k}" data-fm="${k}">${l}</button>`).join('')}</div></header>${factorChart()}</div>
    </div>
-   <div class="panel"><header><h3>Margen Netnow → 2ebox</h3><span class="sub">Costo 2ebox = costo Netnow ÷ (1 − margen)</span></header>
-     <table><thead><tr><th>Línea</th><th class="r">Margen</th><th class="r">Recargo efectivo</th><th>Fuente</th></tr></thead><tbody>
-      <tr><td>Chimeneas</td><td class="r">20%</td><td class="r">+25,0%</td><td class="hint">Correo C. López 18-03-26</td></tr>
-      <tr><td>Telones</td><td class="r">15%</td><td class="r">+17,6%</td><td class="hint">Correo C. López 18-03-26</td></tr>
-      <tr><td>Reolink</td><td class="r">5%</td><td class="r">+5,3%</td><td class="hint">Sheets (Costo REAL 2ebox)</td></tr>
-     </tbody></table></div>
    </div></section>`;
 }
 function bindImp(){
