@@ -7,7 +7,9 @@
       'unidades', 'fob_usd', 'flete_usd', 'pedido', 'zarpe', 'zarpe_est', 'eta_inicial', 'eta', 'eta_est', 'din', 'din_est', 'din_n',
       'bodega', 'bodega_est', 'cd_fuente', 'set_n', 'carpeta', 'carpeta_id', 'pestana', 'anticipo_pct', 'balance',
       'tc_hoy', 'tc_aduana', 'tc_real', 'tc_pagos', 'iva_usd', 'proyectar_con', 'ajuste_usd', 'margen_nn', 'portales_json',
-      'factor_proy', 'factor_real', 'factor_calidad', 'factor_nota', 'alerta', 'cotizacion_json', 'actualizado', 'actualizado_por'],
+      'factor_proy', 'factor_real', 'factor_calidad', 'factor_nota', 'alerta', 'cotizacion_json', 'actualizado', 'actualizado_por',
+      // agregadas después de la carga inicial (la app las crea al final de la fila 1 si faltan)
+      'tc_proy', 'tc_hoy_fecha'],
     // Una fila por importación y columna del costeo (PROYECTADO / REAL). Gastos en CLP.
     BD_Costeo: ['id', 'columna', 'fob_clp', 'flete_usd', 'flete_clp', 'seguro_usd', 'seguro_clp', 'iva_clp',
       'origen', 'adicionales', 'almacenaje', 'despacho', 'aga', 'embarcador', 'garantia', 'bodega', 'otros', 'respaldo'],

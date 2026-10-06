@@ -3,7 +3,8 @@
 let EMB = [], PAGOS = {}, FICHA = {}, FACT = [], SKUS = [], MESES = [], TRANSITO = {}, CAJA_COMP = [], DOCS = {}, CORREOS = [];
 let P = {}, PORTAL_DEF = {}, NN_DEF = {}, TC = 935, CFG = {};
 let USUARIO = null, EDITOR = false, SHEET_IDS = {}, CARGADO_EN = null;
-const VERSION_FILA = {}; // id → 'actualizado' leído, para detectar cambios de otro usuario
+const VERSION_FILA = {};
+const HEADERS = {};      // encabezados reales de cada pestaña BD_* (la app escribe en ese orden) // id → 'actualizado' leído, para detectar cambios de otro usuario
 
 const ISO = d => d.toISOString().slice(0, 10);
 const HOY = new Date(); HOY.setHours(12, 0, 0, 0);
@@ -96,6 +97,7 @@ const Store = (() => {
         });
         FICHA[id] = {
           ref: e.ref, incoterm: r.incoterm || 'FOB', pol: e.pol, via: e.via, tcHoy: num(r.tc_hoy) || TC, tcAduana: num(r.tc_aduana) || TC, tcReal: num(r.tc_real),
+          tcProy: num(r.tc_proy), tcHoyFecha: r.tc_hoy_fecha || null,
           anticipo: num(r.anticipo_pct) ?? 30, balance: r.balance || 'embarque', projTc: r.proyectar_con || 'aduana', ajuste: num(r.ajuste_usd) || 0,
           margenNN: num(r.margen_nn) ?? undefined, portales: json(r.portales_json) || undefined, set: e.setN,
           items: (ps || []).map(p => ({ sku: String(p.sku), nombre: p.nombre, q: num(p.unidades), p: num(p.fob_unit_usd) })),
@@ -121,12 +123,24 @@ const Store = (() => {
     CARGADO_EN = new Date();
   }
 
+  const letra = i => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
   async function cargar() {
-    const r = await G.leer(TABS.map(t => t + '!A:AZ'));
-    const T = {};
-    TABS.forEach((t, i) => { T[t] = objetos(t, r.valueRanges[i]?.values); });
+    const r = await G.leer(TABS.map(t => t + '!A:BZ'));
+    const T = {}, nuevas = [];
+    TABS.forEach((t, i) => {
+      const vals = r.valueRanges[i]?.values || [];
+      const h = (vals[0] || []).map(x => String(x).trim());
+      // Columnas nuevas del esquema que la pestaña aún no tiene: se agregan al final de la fila 1.
+      const falta = SCHEMA[t].filter(k => !h.includes(k));
+      if (falta.length && h.length) { nuevas.push({ range: `${t}!${letra(h.length)}1`, values: [falta] }); h.push(...falta); }
+      HEADERS[t] = h.length ? h : SCHEMA[t].slice();
+      T[t] = objetos(t, [HEADERS[t], ...vals.slice(1)]);
+    });
+    if (nuevas.length && EDITOR) { try { await G.escribir(nuevas); } catch (e) {} }
     construir(T);
   }
+  // Ordena una fila (en orden de SCHEMA) según los encabezados reales de la pestaña.
+  const aHeader = (t, fila) => { const h = HEADERS[t]; if (!h) return fila; const o = Object.fromEntries(SCHEMA[t].map((k, i) => [k, fila[i]])); return h.map(k => o[k] ?? ''); };
 
   /* ---------- modelo → Sheets ---------- */
   const v = x => x == null || (typeof x === 'number' && !isFinite(x)) ? '' : x;
@@ -138,7 +152,7 @@ const Store = (() => {
       incoterm: f?.incoterm, unidades: e.u, fob_usd: e.fob, flete_usd: e.flete, pedido: e.pedido, zarpe: e.zarpe, zarpe_est: e.zarpeEst, eta_inicial: e.etaIni,
       eta: e.eta, eta_est: e.etaEst, din: e.din, din_est: e.dinEst, din_n: e.dinN, bodega: e.bodega, bodega_est: e.bodegaEst, cd_fuente: e.cdFuente, set_n: e.setN,
       carpeta: e.carpeta, carpeta_id: e.carpetaId, pestana: e.pest, anticipo_pct: f?.anticipo ?? e.anticipo, balance: f?.balance ?? e.balance,
-      tc_hoy: f?.tcHoy, tc_aduana: f?.tcAduana, tc_real: f?.tcReal, tc_pagos: e.tc, iva_usd: e.iva, proyectar_con: f?.projTc, ajuste_usd: f?.ajuste,
+      tc_hoy: f?.tcHoy, tc_aduana: f?.tcAduana, tc_real: f?.tcReal, tc_proy: f?.tcProy, tc_hoy_fecha: f?.tcHoyFecha, tc_pagos: e.tc, iva_usd: e.iva, proyectar_con: f?.projTc, ajuste_usd: f?.ajuste,
       margen_nn: f?.margenNN, portales_json: f ? JSON.stringify(f.portales) : '',
       factor_proy: fa.proy, factor_real: fa.real ?? e.factor, factor_calidad: fa.q, factor_nota: fa.nota, alerta: e.alerta,
       cotizacion_json: e.cot ? JSON.stringify(e.cot) : '', actualizado: new Date().toISOString(), actualizado_por: USUARIO?.email || ''
@@ -190,7 +204,7 @@ const Store = (() => {
     });
     borrar.sort((a, b) => b.fila - a.fila);
     if (borrar.length) await G.lote(borrar.map(b => ({ deleteDimension: { range: { sheetId: b.sheetId, dimension: 'ROWS', startIndex: b.fila, endIndex: b.fila + 1 } } })));
-    for (const t of tabs) if (porTab[t].length) await G.agregar(t + '!A1', porTab[t]);
+    for (const t of tabs) if (porTab[t].length) await G.agregar(t + '!A1', porTab[t].map(f => aHeader(t, f)));
   }
 
   async function log(accion, importacion, detalle) {
@@ -205,7 +219,7 @@ const Store = (() => {
     const h = (r.valueRanges[1].values || [[]])[0], iAct = h.indexOf('actualizado'), iPor = h.indexOf('actualizado_por');
     const filas = (r.valueRanges[0].values || []), j = filas.findIndex((x, k) => k > 0 && String(x[0]) === id);
     if (j > 0 && iAct >= 0) {
-      const fila = (await G.leer([`BD_Importaciones!A${j + 1}:AZ${j + 1}`])).valueRanges[0].values?.[0] || [];
+      const fila = (await G.leer([`BD_Importaciones!A${j + 1}:BZ${j + 1}`])).valueRanges[0].values?.[0] || [];
       const act = String(fila[iAct] || ''), por = fila[iPor] || '';
       if (VERSION_FILA[id] !== undefined && act && act !== VERSION_FILA[id] && por !== USUARIO?.email) {
         if (!confirm(`${id} fue modificada por ${por} el ${new Date(act).toLocaleString('es-CL')} después de que abriste la app.\n\n¿Sobrescribir con tus cambios? (Cancelar recarga los datos)`)) { await cargar(); throw new Error('recargado'); }

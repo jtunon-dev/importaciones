@@ -952,9 +952,11 @@ function fichaDe(id){
   FICHA[id]=normFicha(id,f); return FICHA[id];
 }
 /* Costeo de una columna (proj | real), con las fórmulas de la pestaña del Sheets */
+const TC_PROY={proy:'Dólar proyectado CIF',hoy:'Dólar observado hoy',aduana:'Dólar aduanero'};
+const tcProyeccion=f=>f.projTc==='hoy'?f.tcHoy:f.projTc==='proy'?(f.tcProy||f.tcHoy):f.tcAduana;
 function costeo(f,col){
   const fobU=f.items.reduce((s,i)=>s+(+i.q||0)*(+i.p||0),0)+(+f.ajuste||0);
-  const tcP=f.projTc==='hoy'?f.tcHoy:f.tcAduana;
+  const tcP=tcProyeccion(f);
   const c=f[col], tc=col==='proj'?tcP:(f.tcReal||null);
   const fobC=col==='proj'?fobU*tcP:c.fobClp;
   const fl=c.flete||null, sg=c.seguro||null;
@@ -974,8 +976,8 @@ let fichaId=null, fichaNueva=false, fichaPortal='meli';
 function abrirFicha(id){fichaId=id;fichaNueva=false;fichaDe(id);cur='ficha';render();window.scrollTo(0,0)}
 // Ficha vacía: se completa a mano o eligiendo una importación base (copia productos, gastos y condiciones).
 function fichaVacia(){
-  return {id:'',ref:'',base:'',linea:'Chimeneas',proveedor:'',incoterm:'FOB',via:'Marítimo 40HQ',pol:'',tcHoy:TC,tcAduana:TC,tcReal:null,anticipo:30,balance:'embarque',
-    projTc:'aduana',ajuste:0,items:[],proj:{flete:null,seguro:null,g:G0()},real:{fobClp:null,flete:null,seguro:null,ivaClp:null,g:G0()},precios:{},envio:{},
+  return {id:'',ref:'',base:'',linea:'Chimeneas',proveedor:'',incoterm:'FOB',via:'Marítimo 40HQ',pol:'',tcHoy:TC,tcHoyFecha:HOY_S,tcAduana:TC,tcProy:TC,tcReal:null,anticipo:30,balance:'embarque',
+    projTc:'proy',ajuste:0,items:[],proj:{flete:null,seguro:null,g:G0()},real:{fobClp:null,flete:null,seguro:null,ivaClp:null,g:G0()},precios:{},envio:{},
     margenNN:NN_DEF.Chimeneas,portales:JSON.parse(JSON.stringify(PORTAL_DEF))};
 }
 function nuevaFicha(){
@@ -987,7 +989,7 @@ function fichaView(){
   const f=FICHA[fichaId]; if(!f) return '<p>Importación no encontrada.</p>';
   const P_=costeo(f,'proj'), R=costeo(f,'real');
   const realOk=R.faltan===0, fUse=realOk?R:P_;
-  const tcUse=realOk?(f.tcReal||f.tcHoy):(f.projTc==='hoy'?f.tcHoy:f.tcAduana);
+  const tcUse=realOk?(f.tcReal||f.tcHoy):tcProyeccion(f);
   const eObj=EMB.find(x=>x.id===f.id);
   const linea=f.linea, nn=f.margenNN;
   const head=fichaNueva?`<span class="eyebrow">Nueva importación</span><h2 style="font-size:22px;margin-top:4px">Crear importación</h2>`
@@ -1016,16 +1018,21 @@ function fichaView(){
   const ant=(+f.anticipo||0)/100;
   const s3=`<div class="panel"><header><h3><span class="stepn">2</span>Forma de pago al proveedor</h3></header>
     <div class="fields f-pago">
-     <label>Pago adelantado (%)${inp('anticipo',f.anticipo)}<span class="hint">USD ${n2(P_.fobU*ant)} al confirmar la orden</span></label>
-     <label>Pago del balance<select class="fin" data-p="balance">${Object.entries(BALANCE).map(([k,l])=>`<option value="${k}" ${f.balance===k?'selected':''}>${l}</option>`).join('')}</select><span class="hint">${ant<1?`Balance USD ${n2(P_.fobU*(1-ant))}`:'Sin balance: pago 100% adelantado'}</span></label>
+     <label>Anticipo (%)${inp('anticipo',f.anticipo)}</label>
+     <label>Anticipo (USD)${inp('anticipoMonto',P_.fobU?Math.round(P_.fobU*ant*100)/100:'')}</label>
+     <span class="hint f-span">Se paga al confirmar la orden</span>
+     <label>Balance (%)<input class="ro" value="${fmtN((1-ant)*100,1)}" readonly tabindex="-1"></label>
+     <label>Balance (USD)<input class="ro" value="${n2(P_.fobU*(1-ant))}" readonly tabindex="-1"></label>
+     <label class="f-span">Momento del balance<select class="fin" data-p="balance">${Object.entries(BALANCE).map(([k,l])=>`<option value="${k}" ${f.balance===k?'selected':''}>${l}</option>`).join('')}</select>${ant>=1?'<span class="hint">Sin balance: pago 100% adelantado</span>':''}</label>
     </div></div>`;
   // 4 tipo de cambio
   const s4=`<div class="panel"><header><h3><span class="stepn">3</span>Tipo de cambio</h3></header>
     <div class="fields f-tc">
-     <label>Dólar hoy${inp('tcHoy',f.tcHoy)}<a class="hint lnk" href="https://si3.bcentral.cl/indicadoressiete/secure/Serie.aspx?gcode=PRE_TCO" target="_blank" rel="noopener">Banco Central · dólar observado ↗</a></label>
-     <label>Dólar aduanero del mes${inp('tcAduana',f.tcAduana)}<a class="hint lnk" href="https://www.aduana.cl/tipo-de-cambio-2020-2024/aduana/2019-12-27/112312.html" target="_blank" rel="noopener">Aduana · tipo de cambio ↗</a></label>
-     <label>Proyectar con<select class="fin" data-p="projTc"><option value="aduana" ${f.projTc==='aduana'?'selected':''}>Dólar aduanero</option><option value="hoy" ${f.projTc==='hoy'?'selected':''}>Dólar hoy</option></select><span class="hint">El IVA siempre usa el aduanero</span></label>
-     <label>T/C real promedio de pagos${inp('tcReal',f.tcReal,{ph:'Se calcula al pagar'})}<span class="hint">Promedio ponderado anticipo + balance</span></label>
+     <label>Dólar observado hoy${inp('tcHoy',f.tcHoy)}<a class="hint lnk" href="https://si3.bcentral.cl/indicadoressiete/secure/Serie.aspx?gcode=PRE_TCO" target="_blank" rel="noopener">Banco Central${f.tcHoyFecha?' · '+fmtD(f.tcHoyFecha):''} ↗</a></label>
+     <label>Dólar aduanero del mes${inp('tcAduana',f.tcAduana)}<span class="hint">IVA y gastos en destino · <a class="lnk" href="https://www.aduana.cl/tipo-de-cambio-2020-2024/aduana/2019-12-27/112312.html" target="_blank" rel="noopener">Aduana ↗</a></span></label>
+     <label>Dólar proyectado CIF${inp('tcProy',f.tcProy,{ph:'Ej. 950'})}<span class="hint">Para FOB, flete y seguro</span></label>
+     <label>T/C real promedio${inp('tcReal',f.tcReal,{ph:'Se calcula al pagar'})}<span class="hint">Ponderado anticipo + balance</span></label>
+     <div class="f-span"><span class="lbl">Proyectar FOB, flete y seguro con</span><div class="seg" id="f-projtc">${Object.entries(TC_PROY).map(([k,l])=>`<button type="button" aria-pressed="${f.projTc===k}" data-projtc="${k}">${(s=>s[0].toUpperCase()+s.slice(1))(l.replace('Dólar ',''))}</button>`).join('')}</div></div>
     </div></div>`;
   // 5 costeo
   const row=(lbl,pu,pc,ru,rc,opt={})=>`<tr class="${opt.cls||''}"><td>${lbl}${opt.tag?` <span class="hint">${opt.tag}</span>`:''}</td><td class="r">${pu}</td><td class="r">${pc}</td><td class="r rc">${ru}</td><td class="r rc">${rc}</td></tr>`;
@@ -1083,7 +1090,7 @@ function fichaView(){
    <div class="head"><div>${head}</div><div class="actions">${acciones}</div></div>
    <div class="kpis">
     <div class="kpi"><span class="eyebrow">FOB</span><span class="v num">${fmtUSD(P_.fobU)}</span><span class="d">${fmtN(f.items.reduce((s,i)=>s+(+i.q||0),0))} unidades · ${f.incoterm}</span></div>
-    <div class="kpi"><span class="eyebrow">Factor proyectado</span><span class="v num">${P_.factor?fmtN(P_.factor,3):'—'}</span><span class="d">T/C ${fmtN(f.projTc==='hoy'?f.tcHoy:f.tcAduana,2)}</span></div>
+    <div class="kpi"><span class="eyebrow">Factor proyectado</span><span class="v num">${P_.factor?fmtN(P_.factor,3):'—'}</span><span class="d">${TC_PROY[f.projTc]||'T/C'} ${fmtN(tcProyeccion(f),2)}</span></div>
     <div class="kpi"><span class="eyebrow">Factor real</span><span class="v num" style="color:${realOk?'var(--ok)':'var(--ink-3)'}">${realOk&&R.factor?fmtN(R.factor,3):'—'}</span><span class="d">${realOk?'Costeo cerrado':`Faltan ${R.faltan} campos`}</span></div>
     <div class="kpi"><span class="eyebrow">Inversión total (sin IVA)</span><span class="v num">${fmtCLP(realOk?R.totC:P_.totC)}</span><span class="d">${realOk?'Real':'Proyectada'}</span></div>
    </div>
@@ -1097,12 +1104,13 @@ function bindFicha(){
   document.querySelectorAll('.fin').forEach(el=>el.onchange=()=>keep(()=>{
     const p=el.dataset.p, raw=el.value, num=el.type==='number'?(raw===''?null:+raw):raw;
     if(p==='base'&&!raw){const nf=normFicha('__nueva',fichaVacia());Object.assign(nf,{id:f.id,ref:f.ref});FICHA.__nueva=nf;return}
-    if(p==='base'){const b=fichaDe(raw);const nf=JSON.parse(JSON.stringify(b));Object.assign(nf,{id:f.id,ref:f.ref,base:raw,tcReal:null,real:{fobClp:null,flete:null,seguro:null,ivaClp:null,g:G0()}});FICHA.__nueva=nf;return}
+    if(p==='base'){const b=fichaDe(raw);const nf=JSON.parse(JSON.stringify(b));Object.assign(nf,{id:f.id,ref:f.ref,base:raw,tcHoy:TC,tcHoyFecha:HOY_S,tcProy:b.tcProy||TC,tcReal:null,real:{fobClp:null,flete:null,seguro:null,ivaClp:null,g:G0()}});FICHA.__nueva=nf;return}
     setPath(f,p,num);
-    const tcP=f.projTc==='hoy'?f.tcHoy:f.tcAduana;
+    const tcP=tcProyeccion(f);
     const m=p.match(/^(proj|real)\.(flete|seguro)\.(0|1)$/);
     if(m){const tc=m[1]==='proj'?tcP:(f.tcReal||f.tcHoy);const arr=f[m[1]][m[2]];if(arr){if(m[3]==='0'&&arr[0]!=null)arr[1]=Math.round(arr[0]*tc);if(m[3]==='1'&&arr[1]!=null)arr[0]=Math.round(arr[1]/tc*100)/100}}
-    if(p==='projTc'||p==='tcAduana'||p==='tcHoy'){['flete','seguro'].forEach(k=>{const a=f.proj[k];if(a&&a[0]!=null)a[1]=Math.round(a[0]*(f.projTc==='hoy'?f.tcHoy:f.tcAduana))})}
+    if(p==='projTc'||p==='tcAduana'||p==='tcHoy'||p==='tcProy'){['flete','seguro'].forEach(k=>{const a=f.proj[k];if(a&&a[0]!=null)a[1]=Math.round(a[0]*tcProyeccion(f))})}
+    if(p==='anticipoMonto'){const fob=costeo(f,'proj').fobU;f.anticipo=fob?Math.round(num/fob*10000)/100:f.anticipo;delete f.anticipoMonto}
     if(p==='linea'&&NN_DEF[num]) f.margenNN=NN_DEF[num];
     if(p.startsWith('items.')&&p.endsWith('.sku')){const it=f.items[+p.split('.')[1]];if(!f.precios[it.sku])f.precios[it.sku]=Object.fromEntries(PORTALES.map(([k])=>[k,PVP_REF[it.sku]||null]))}
     if(!fichaNueva&&EMB.some(e=>e.id===f.id)) guardarLuego(f.id);
@@ -1111,6 +1119,7 @@ function bindFicha(){
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>keep(()=>{f.items.splice(+b.dataset.del,1);auto()}));
   const add=$('#f-add'); if(add) add.onclick=()=>keep(()=>f.items.push({sku:'',nombre:'',q:0,p:0}));
   document.querySelectorAll('[data-portal]').forEach(b=>b.onclick=()=>keep(()=>{fichaPortal=b.dataset.portal}));
+  document.querySelectorAll('[data-projtc]').forEach(b=>b.onclick=()=>keep(()=>{f.projTc=b.dataset.projtc;['flete','seguro'].forEach(k=>{const a=f.proj[k];if(a&&a[0]!=null)a[1]=Math.round(a[0]*tcProyeccion(f))});auto()}));
   const pi=$('#f-pi'); if(pi) pi.onclick=()=>{piDrawer();piDestino=fichaId};
   const back=$('#f-back'); if(back) back.onclick=()=>{cur='importaciones';render()};
   const hit=$('#f-hitos'); if(hit) hit.onclick=()=>embDrawer(f.id);
@@ -1166,6 +1175,7 @@ function materializarPagos(e,regenerar){
   delete PAGOS[e.id];
   const est=pagosEmb(e).filter(p=>p.fuente==='Estimado').filter(p=>!reales.some(r=>r[1]===p.cat&&r[2]===p.concepto));
   PAGOS[e.id]=[...reales,...est.map(p=>[p.fecha,p.cat,p.concepto,p.mon,Math.round(p.monto*100)/100,p.tc,'Estimado',1,null,''])].sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+  if(!PAGOS[e.id].length) delete PAGOS[e.id]; // sin FOB aún: el flujo de caja usa el calendario estimado en vivo
 }
 async function crearCarpeta(id){
   const e=EMB.find(x=>x.id===id); if(!e||e.carpetaId) return;
