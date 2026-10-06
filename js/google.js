@@ -1,6 +1,6 @@
 /* Login con Google (Google Identity Services) y llamadas a Sheets / Drive con el token del usuario. */
 const G = (() => {
-  let token = null, expira = 0, cliente = null, pendiente = null;
+  let token = null, expira = 0, cliente = null, pendiente = null, permisosOk = true;
   try { const t = JSON.parse(sessionStorage.getItem('imp-token') || 'null'); if (t && t.expira > Date.now() + 60e3) { token = t.token; expira = t.expira; } } catch (e) {}
 
   function init() {
@@ -10,6 +10,7 @@ const G = (() => {
         const p = pendiente; pendiente = null;
         if (r.error) { p && p.reject(new Error(r.error_description || r.error)); return; }
         token = r.access_token; expira = Date.now() + (r.expires_in - 60) * 1000;
+        permisosOk = google.accounts.oauth2.hasGrantedAllScopes(r, ...CONFIG.SCOPES.split(' ').filter(x => x.startsWith('https://')));
         try { sessionStorage.setItem('imp-token', JSON.stringify({ token, expira })); } catch (e) {}
         p && p.resolve(token);
       },
@@ -20,7 +21,7 @@ const G = (() => {
     return new Promise((resolve, reject) => { pendiente = { resolve, reject }; cliente.requestAccessToken({ prompt }); });
   }
   const conectado = () => !!token && Date.now() < expira;
-  async function login() { return pedirToken('select_account'); }
+  async function login() { return pedirToken('consent select_account'); }
   function logout() {
     if (token) google.accounts.oauth2.revoke(token, () => {});
     token = null; expira = 0; try { sessionStorage.removeItem('imp-token'); } catch (e) {}
@@ -41,7 +42,7 @@ const G = (() => {
   const q = o => Object.entries(o).map(([k, v]) => Array.isArray(v) ? v.map(x => k + '=' + encodeURIComponent(x)).join('&') : k + '=' + encodeURIComponent(v)).join('&');
 
   return {
-    init, login, logout, conectado,
+    init, login, logout, conectado, permisosOk: () => permisosOk,
     usuario: () => api('https://www.googleapis.com/oauth2/v3/userinfo'),
     meta: () => api(SH + '?fields=sheets.properties(sheetId,title)'),
     leer: ranges => api(SH + '/values:batchGet?' + q({ ranges, valueRenderOption: 'UNFORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING' })),

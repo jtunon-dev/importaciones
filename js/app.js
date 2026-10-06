@@ -1231,7 +1231,9 @@ async function entrar(){
   try{
     USUARIO=await G.usuario();
     try{EDITOR=await G.puedeEditar()}catch(err){
-      if(err.status===404||err.status===403){pantalla(`<div class="panel"><h2>Sin acceso</h2><p>La cuenta <b>${esc(USUARIO.email)}</b> no tiene acceso al Sheets IMPORTACIONES 2EBOX. Pide a Jorge que lo comparta contigo (lector para ver, editor para editar).</p><button class="btn" onclick="salir()">Entrar con otra cuenta</button></div>`);return}
+      const api=/has not been used|is disabled|accessNotConfigured/i.test(err.message), scope=!G.permisosOk()||/insufficient|scope/i.test(err.message);
+      if(api||scope){pantalla(`<div class="panel"><h2>Falta un permiso de Google</h2><p>${api?'La API de Google Drive o de Sheets no está activada en el proyecto de Google Cloud "Importaciones 2ebox". Actívala en APIs y servicios → Biblioteca y vuelve a entrar.':'Al entrar no se marcaron todos los permisos (ver y editar Sheets y Drive). Vuelve a entrar y marca todas las casillas.'}</p><p class="hint">Detalle: ${esc(err.message)}</p><button class="btn primary" onclick="salir()">Volver a entrar</button></div>`);return}
+      if(err.status===404||err.status===403){pantalla(`<div class="panel"><h2>Sin acceso</h2><p>La cuenta <b>${esc(USUARIO.email)}</b> no tiene acceso al Sheets IMPORTACIONES 2EBOX. Pide a Jorge que lo comparta contigo (lector para ver, editor para editar).</p><p class="hint">Detalle: ${esc(err.message)}</p><button class="btn" onclick="salir()">Entrar con otra cuenta</button></div>`);return}
       throw err}
     const falt=await Store.faltantes();
     if(falt.length){
