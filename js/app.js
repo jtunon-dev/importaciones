@@ -55,7 +55,7 @@ const chip=(e)=>`<span class="chip ${EST[e][1]}">${EST[e][0]}</span>`;
 const ORD={quiebre:0,comprar:1,riesgo:2,planificar:3,ok:4,sobre:5,nuevo:6,desc:7};
 
 /* ===================== UI ===================== */
-const TABS=[['resumen','Resumen'],['reposicion','Reposición por SKU'],['importaciones','Importaciones'],['caja','Flujo de caja'],['correos','Correos'],['carga','Carga de datos']];
+const TABS=[['resumen','Resumen'],['reposicion','Reposición por SKU'],['importaciones','Importaciones'],['nueva','Nueva importación'],['caja','Flujo de caja'],['correos','Correos'],['carga','Carga de datos']];
 let cur='resumen', filtroLinea='Todas';
 const $=s=>document.querySelector(s);
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
@@ -67,11 +67,13 @@ const ICONS={
  caja:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M14.5 9.2c-.5-.8-1.4-1.2-2.5-1.2-1.4 0-2.5.7-2.5 1.9 0 2.7 5 1.4 5 4.2 0 1.2-1.1 1.9-2.5 1.9-1.1 0-2.1-.5-2.6-1.3M12 6.5V8M12 16v1.5"/></svg>',
  carga:'<svg viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>'
 };
+ICONS.nueva='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>';
 ICONS.correos='<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg>';
-const SHORT={resumen:'Resumen',reposicion:'Reposición',importaciones:'Importaciones',caja:'Caja',correos:'Correos',carga:'Carga'};
+const SHORT={resumen:'Resumen',reposicion:'Reposición',importaciones:'Importaciones',nueva:'Nueva',caja:'Caja',correos:'Correos',carga:'Carga'};
 function renderTabs(){
-  $('#tabs').innerHTML=TABS.map(([k,l])=>`<button ${k===cur||(cur==='ficha'&&k==='importaciones')?'aria-current="page"':''} data-k="${k}" title="${l}">${ICONS[k]}<span>${SHORT[k]}</span></button>`).join('');
-  $('#tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{cur=b.dataset.k;try{localStorage.setItem('pc-tab',cur)}catch(e){}render();window.scrollTo(0,0)});
+  const activa=k=>k===cur||(cur==='ficha'&&k===(fichaNueva?'nueva':'importaciones'));
+  $('#tabs').innerHTML=TABS.filter(([k])=>k!=='nueva'||EDITOR).map(([k,l])=>`<button ${activa(k)?'aria-current="page"':''} data-k="${k}" title="${l}">${ICONS[k]}<span>${SHORT[k]}</span></button>`).join('');
+  $('#tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(b.dataset.k==='nueva'){nuevaFicha();return}cur=b.dataset.k;try{localStorage.setItem('pc-tab',cur)}catch(e){}render();window.scrollTo(0,0)});
 }
 function topline(){
   const hh=CARGADO_EN?CARGADO_EN.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}):'—';
@@ -997,7 +999,7 @@ function fichaView(){
      <label>Proveedor${inp('proveedor',f.proveedor,{type:'text'})}</label>
      <label>Línea<select class="fin" data-p="linea">${['Chimeneas','Telones','Reolink'].map(l=>`<option ${l===linea?'selected':''}>${l}</option>`).join('')}</select></label>
      <label>Incoterm<select class="fin" data-p="incoterm">${INCOTERMS.map(i=>`<option ${i===f.incoterm?'selected':''}>${i}</option>`).join('')}</select></label>
-     <label>Vía<select class="fin" data-p="via">${['Marítimo 20GP','Marítimo 40HQ','Marítimo LCL','Aéreo','Local'].map(v=>`<option ${f.via===v||(f.via==='Marítimo'&&v==='Marítimo 20GP')?'selected':''}>${v}</option>`).join('')}</select></label>
+     <label>Vía<select class="fin" data-p="via">${['Marítimo 20GP','Marítimo 40HQ','Marítimo 40NOR','Marítimo LCL','Aéreo','Local'].map(v=>`<option ${f.via===v||(f.via==='Marítimo'&&v==='Marítimo 20GP')?'selected':''}>${v}</option>`).join('')}</select></label>
      <label>Puerto de origen (POL)${inp('pol',f.pol,{type:'text'})}</label>
     </div></div>`;
   // 2 productos
