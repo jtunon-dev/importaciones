@@ -9,7 +9,8 @@ const logo = idx.match(/<img src="([^"]+)"/)[1];
 const shell = idx.slice(idx.indexOf('<div class="shell">'), idx.indexOf('<script'));
 const js = ['js/config.js', 'js/schema.js', 'js/qa.js', 'js/store.js', 'js/app.js']
   .map(f => `<script>/* ${f} */\n${leer(f).replace(/<\/script/gi, '<\\/script')}\n</script>`).join('\n');
-const out = `<title>Importaciones QA</title>
+const out = `<meta charset="utf-8">
+<title>Importaciones QA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
