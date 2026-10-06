@@ -109,7 +109,7 @@ function resumen(){
     <div class="kpi"><span class="eyebrow">Stock valorizado</span><span class="v num">${fmtCLP(valor)}</span><span class="d">Costo 2ebox · BD001 + BD002 + Full ML</span></div>
     <div class="kpi alert"><span class="eyebrow">SKUs a atender</span><span class="v num">${urg.length}</span><span class="d">${rows.filter(r=>r.estado==='quiebre').length} en quiebre · ${rows.filter(r=>r.estado==='riesgo').length} sin stock hasta que llegue la carga</span></div>
     <div class="kpi"><span class="eyebrow">En camino</span><span class="v num">${fmtN(uCamino)} u</span><span class="d">${enCamino.length} importaciones · ${fmtUSD(fobCamino)} FOB</span></div>
-    <div class="kpi"><span class="eyebrow">Caja comprometida oct–dic</span><span class="v num">${fmtCLP(caja90)}</span><span class="d">Pagos proyectados a dic-26, incluye IVA recuperable</span></div>
+    <div class="kpi"><span class="eyebrow">Caja comprometida 90 días</span><span class="v num">${fmtCLP(caja90)}</span><span class="d">Pagos proyectados hasta el ${fmtD(addD(HOY_S,90))}, incluye IVA recuperable</span></div>
    </div>
    <div class="grid-3-1">
     <div class="panel"><header><h3>Acciones de compra</h3><span class="sub">Ordenadas por urgencia · clic para ver el detalle</span></header>

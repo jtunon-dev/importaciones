@@ -172,12 +172,12 @@ table.costeo td.rc{background:color-mix(in srgb,var(--ok-bg) 45%,transparent)}
 table tr.tot td{font-weight:600}
 /* Lists */
 .alerts{display:grid;gap:8px}
-.alert{display:grid;grid-template-columns:168px minmax(0,1fr) 88px;gap:14px;align-items:center;padding:11px 14px;border-radius:12px;background:var(--surface-2)}
-.alert>.chip{justify-self:start;white-space:nowrap}
-.alert>:last-child{text-align:right}
+.alerts>.alert{display:grid;grid-template-columns:168px minmax(0,1fr) 88px;gap:14px;align-items:center;padding:11px 14px;border-radius:12px;background:var(--surface-2)}
+.alerts>.alert>.chip{justify-self:start;white-space:nowrap}
+.alerts>.alert>:last-child{text-align:right}
 .alert .t{font-weight:500}
 .alert .m{color:var(--ink-3);font-size:12.5px}
-@media (max-width:560px){.alert{grid-template-columns:1fr}.alert>:last-child{text-align:left}}
+@media (max-width:560px){.alerts>.alert{grid-template-columns:1fr}.alerts>.alert>:last-child{text-align:left}}
 
 /* Gantt */
 .gantt{position:relative;min-width:860px}
