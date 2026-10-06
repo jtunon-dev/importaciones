@@ -972,11 +972,14 @@ function costeo(f,col){
 }
 let fichaId=null, fichaNueva=false, fichaPortal='meli';
 function abrirFicha(id){fichaId=id;fichaNueva=false;fichaDe(id);cur='ficha';render();window.scrollTo(0,0)}
+// Ficha vacía: se completa a mano o eligiendo una importación base (copia productos, gastos y condiciones).
+function fichaVacia(){
+  return {id:'',ref:'',base:'',linea:'Chimeneas',proveedor:'',incoterm:'FOB',via:'Marítimo 40HQ',pol:'',tcHoy:TC,tcAduana:TC,tcReal:null,anticipo:30,balance:'embarque',
+    projTc:'aduana',ajuste:0,items:[],proj:{flete:null,seguro:null,g:G0()},real:{fobClp:null,flete:null,seguro:null,ivaClp:null,g:G0()},precios:{},envio:{},
+    margenNN:NN_DEF.Chimeneas,portales:JSON.parse(JSON.stringify(PORTAL_DEF))};
+}
 function nuevaFicha(){
-  const base=Object.keys(FICHA).filter(k=>k!=='__nueva'&&EMB.some(e=>e.id===k)).sort((a,b)=>String(EMB.find(e=>e.id===a).pedido).localeCompare(String(EMB.find(e=>e.id===b).pedido))).pop()||EMB[EMB.length-1]?.id, b=fichaDe(base);
-  const f=JSON.parse(JSON.stringify(b));
-  Object.assign(f,{id:'',ref:'',base,tcReal:null,real:{fobClp:null,flete:null,seguro:null,ivaClp:null,g:G0()}});
-  FICHA.__nueva=f; fichaId='__nueva'; fichaNueva=true; cur='ficha'; render(); window.scrollTo(0,0);
+  FICHA.__nueva=normFicha('__nueva',fichaVacia()); FICHA.__nueva.id=''; fichaId='__nueva'; fichaNueva=true; cur='ficha'; render(); window.scrollTo(0,0);
 }
 const n2=v=>v==null||v===''?'':fmtN(v,2), n0=v=>v==null||v===''?'':Math.round(v).toLocaleString('es-CL');
 const inp=(path,val,opt={})=>`<input class="fin${opt.cls?' '+opt.cls:''}" data-p="${path}" type="${opt.type||'number'}" step="any" value="${val??''}" placeholder="${opt.ph||''}" ${opt.w?`style="width:${opt.w}"`:''}>`;
@@ -989,10 +992,10 @@ function fichaView(){
   const linea=f.linea, nn=f.margenNN;
   const head=fichaNueva?`<span class="eyebrow">Nueva importación</span><h2 style="font-size:22px;margin-top:4px">Crear importación</h2>`
     :`<span class="eyebrow">${linea} · ${f.proveedor} · ${f.via}</span><h2 style="font-size:22px;margin-top:4px">${f.id} <span class="mono lnk" style="font-size:15px">${f.ref||'sin referencia'}</span></h2>`;
-  const baseOpts=Object.keys(FICHA).filter(k=>k!=='__nueva').map(k=>`<option ${f.base===k?'selected':''}>${k}</option>`).join('');
+  const baseOpts=`<option value="" ${f.base?'':'selected'}>— Sin base —</option>`+Object.keys(FICHA).filter(k=>k!=='__nueva').map(k=>`<option ${f.base===k?'selected':''}>${k}</option>`).join('');
   // 1 datos
-  const s1=`<div class="panel"><header><h3><span class="stepn">1</span>Datos de la importación</h3>${fichaNueva?'<span class="sub">Parte desde una importación pasada: copia productos, gastos proyectados y condiciones</span>':''}</header>
-    <div class="fields">
+  const s1=`<div class="panel"><header><h3><span class="stepn">1</span>Datos de la importación</h3>${fichaNueva?'<span class="sub">Opcional: elige una importación base para copiar sus productos, gastos proyectados y condiciones</span>':''}</header>
+    <div class="fields f-datos">
      ${fichaNueva?`<label>Basada en<select class="fin" data-p="base">${baseOpts}</select></label>`:''}
      <label>N° de importación${inp('id',f.id,{type:'text',ph:'Ej. Chimenea 6'})}<span class="hint">Igual al nombre de la carpeta en Drive</span></label>
      <label>Referencia oficial${inp('ref',f.ref,{type:'text',ph:'Código del embarque (PI / invoice)'})}<span class="hint">Se agrega cuando el proveedor confirma</span></label>
@@ -1094,6 +1097,7 @@ function bindFicha(){
   const keep=fn=>{const y=window.scrollY;fn();render();window.scrollTo(0,y)};
   document.querySelectorAll('.fin').forEach(el=>el.onchange=()=>keep(()=>{
     const p=el.dataset.p, raw=el.value, num=el.type==='number'?(raw===''?null:+raw):raw;
+    if(p==='base'&&!raw){const nf=normFicha('__nueva',fichaVacia());Object.assign(nf,{id:f.id,ref:f.ref});FICHA.__nueva=nf;return}
     if(p==='base'){const b=fichaDe(raw);const nf=JSON.parse(JSON.stringify(b));Object.assign(nf,{id:f.id,ref:f.ref,base:raw,tcReal:null,real:{fobClp:null,flete:null,seguro:null,ivaClp:null,g:G0()}});FICHA.__nueva=nf;return}
     setPath(f,p,num);
     const tcP=f.projTc==='hoy'?f.tcHoy:f.tcAduana;

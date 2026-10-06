@@ -246,3 +246,11 @@ a.doc:hover{filter:brightness(.95)}
 #save-st{min-width:84px;text-align:right}
 input:disabled,select:disabled,textarea:disabled{opacity:.75;cursor:not-allowed;background:var(--surface-2)}
 .err{color:var(--bad)}
+
+/* Ficha: datos de la importación en grilla pareja */
+.fields{align-items:start}
+label{align-content:start}
+.fields input,.fields select{height:40px;padding:0 10px}
+.fields.f-datos{grid-template-columns:repeat(4,minmax(0,1fr));column-gap:14px;row-gap:14px}
+@media (max-width:900px){.fields.f-datos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.fields.f-datos{grid-template-columns:1fr}}
