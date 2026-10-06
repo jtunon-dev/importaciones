@@ -104,7 +104,7 @@ function resumen(){
   const sobre=rows.filter(r=>r.estado==='sobre').reduce((a,r)=>a+r.valor,0);
   const alerts=rows.filter(r=>!['ok','nuevo','desc'].includes(r.estado)).sort((a,b)=>ORD[a.estado]-ORD[b.estado]).slice(0,7);
   return `<section class="view">
-   <div class="head"><div><span class="eyebrow">Al 5 de octubre de 2026 · Chimeneas, Telones y Reolink</span><h2 style="font-size:22px;margin-top:4px">Resumen de compras</h2></div></div>
+   <div class="head"><div><h2 style="font-size:22px;margin-top:4px">Resumen de compras</h2></div></div>
    <div class="kpis">
     <div class="kpi"><span class="eyebrow">Stock valorizado</span><span class="v num">${fmtCLP(valor)}</span><span class="d">Costo 2ebox · BD001 + BD002 + Full ML</span></div>
     <div class="kpi alert"><span class="eyebrow">SKUs a atender</span><span class="v num">${urg.length}</span><span class="d">${rows.filter(r=>r.estado==='quiebre').length} en quiebre · ${rows.filter(r=>r.estado==='riesgo').length} sin stock hasta que llegue la carga</span></div>
@@ -177,7 +177,7 @@ function reposicion(){
   const rows=SKUS.map(calc).filter(r=>filtroLinea==='Todas'||r.linea===filtroLinea);
   const lineas=['Chimeneas','Telones','Reolink'].filter(l=>filtroLinea==='Todas'||l===filtroLinea);
   return `<section class="view">
-   <div class="head"><div><span class="eyebrow">Punto de reorden y sugerido de compra</span><h2 style="font-size:22px;margin-top:4px">Reposición por SKU</h2>
+   <div class="head"><div><h2 style="font-size:22px;margin-top:4px">Reposición por SKU</h2>
     <p>Demanda = promedio mensual de los últimos 6 meses, sin contar meses en cero (quiebres). Posición = stock + en camino. Sugerido = demanda de (lead time + 30 días de revisión) + stock de seguridad − posición, redondeado al mínimo de compra.</p></div>
     <div class="actions"><div class="seg" id="fl">${['Todas','Chimeneas','Telones','Reolink'].map(l=>`<button aria-pressed="${l===filtroLinea}" data-l="${l}">${l}</button>`).join('')}</div></div></div>
    <div class="panel"><div class="tbl-wrap"><table>
@@ -240,7 +240,7 @@ function importaciones(){
   const filtros=grupos.map(([k,l,vals])=>`<fieldset class="fg"><legend>${l}</legend>${vals.map(v=>{const n=EMB.filter(e=>campo(e,k)===v).length;
      return `<label class="ck"><input type="checkbox" data-fk="${k}" value="${v}" ${FIL[k].has(v)?'checked':''}><span>${v}</span><em>${n}</em></label>`}).join('')}</fieldset>`).join('');
   return `<section class="view">
-   <div class="head"><div><span class="eyebrow">Una ficha por importación · Sheets + carpeta Drive + correos de arribo + Klog</span><h2 style="font-size:22px;margin-top:4px">Importaciones</h2></div></div>
+   <div class="head"><div><h2 style="font-size:22px;margin-top:4px">Importaciones</h2></div></div>
    <div class="kpis">
     ${kcard('En cotización','En cotización',cnt('En cotización'))}
     ${kcard('En producción','En producción',cnt('En producción'))}
@@ -405,7 +405,7 @@ function caja(){
   const pico=Object.entries(futM).sort((a,b)=>b[1]-a[1])[0];
   const tabla=ps.filter(p=>cajaMesSel?p.fecha.startsWith(cajaMesSel):(p.fecha>=addD(HOY_S,-60))).filter(p=>meses.includes(p.fecha.slice(0,7))||cajaMesSel);
   return `<section class="view">
-   <div class="head"><div><span class="eyebrow">Salidas de dinero por importación · caja de Netnow</span><h2 style="font-size:22px;margin-top:4px">Flujo de caja de compras</h2>
+   <div class="head"><div><h2 style="font-size:22px;margin-top:4px">Flujo de caja de compras</h2>
      <p>Cada pago en su fecha: anticipo y saldo al proveedor, flete internacional (anticipo al zarpe y saldo al arribo), impuestos de internación al aceptar la DIN, agencia y gastos portuarios, y el flete a bodega. Lo pagado va en color sólido; lo proyectado, achurado.</p></div>
      <div class="actions">
       <div class="seg" id="rng">${[['todo','Mar-25 → feb-27'],['12m','Últimos 12 meses'],['futuro','Próximos meses']].map(([k,l])=>`<button aria-pressed="${cajaRango===k}" data-r="${k}">${l}</button>`).join('')}</div>
@@ -457,7 +457,7 @@ let formSel='imp';
 function carga(){
   const F={imp:'Nueva importación',hito:'Registrar hito',pago:'Registrar pago',sup:'Supuestos'};
   return `<section class="view">
-   <div class="head"><div><span class="eyebrow">Un solo lugar de ingreso · cada dato con su fuente y su validación</span><h2 style="font-size:22px;margin-top:4px">Carga de datos</h2>
+   <div class="head"><div><h2 style="font-size:22px;margin-top:4px">Carga de datos</h2>
     <p>Todo lo que se registra aquí queda en el Sheets (pestañas BD_*), con quién y cuándo lo cambió. Los documentos se suben a la carpeta de Drive de cada importación.</p></div></div>
    <div class="grid-3-1">
     <div class="panel"><div class="seg" id="fs" style="margin-bottom:14px">${Object.entries(F).map(([k,l])=>`<button aria-pressed="${k===formSel}" data-f="${k}">${l}</button>`).join('')}</div>
@@ -1193,7 +1193,7 @@ function correosView(){
   const grupo=c=>c.estado==='archivado'?'asignado':c.estado;
   const lista=CORREOS.filter(c=>correoFiltro==='todos'||grupo(c)===correoFiltro);
   const cnt=k=>CORREOS.filter(c=>grupo(c)===k).length;
-  return `<section class="view"><div class="head"><div><span class="eyebrow">Gmail de importaciones · revisado por el motor cada 15 min</span><h2 style="font-size:22px;margin-top:4px">Correos</h2>
+  return `<section class="view"><div class="head"><div><h2 style="font-size:22px;margin-top:4px">Correos</h2>
     <p>Órdenes, PI, pagos, Swift, DIN y avisos de arribo de proveedores y de Grace. Los que el motor no pudo asociar a una importación quedan "por asignar"; al asignarlos, sus adjuntos se guardan en la carpeta en la próxima pasada.</p></div></div>
    <div class="seg" id="cf" style="margin-bottom:12px">${[['por asignar','Por asignar'],['asignado','Asignados'],['ignorado','Ignorados'],['todos','Todos']].map(([k,l])=>`<button aria-pressed="${k===correoFiltro}" data-cf="${k}">${l}${k!=='todos'?` (${cnt(k)})`:''}</button>`).join('')}</div>
    <div class="panel"><div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>De</th><th>Asunto</th><th>Tipo</th><th>Adjuntos</th><th>Importación</th></tr></thead><tbody>
