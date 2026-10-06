@@ -1021,11 +1021,14 @@ function fichaView(){
      <label>Puerto de origen (POL)${inp('pol',f.pol,{type:'text'})}</label>
     </div></div>`;
   // 2 productos
-  const s2=`<div class="panel"><header><h3><span class="stepn">4</span>Mix de productos</h3><span class="sub">Precios ${f.incoterm}</span><button class="btn soft" id="f-pi" style="margin-left:auto;font-size:12.5px;padding:6px 12px">Cargar desde PI</button></header>
-    <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Producto</th><th class="r">Unidades</th><th class="r">Precio unit. USD</th><th class="r">Total USD</th><th></th></tr></thead><tbody>
-    ${f.items.map((it,i)=>`<tr><td>${inp(`items.${i}.sku`,it.sku,{type:'text',cls:'mono',w:'130px'})}</td><td>${inp(`items.${i}.nombre`,it.nombre,{type:'text',w:'220px'})}</td><td class="r">${inp(`items.${i}.q`,it.q,{w:'90px'})}</td><td class="r">${inp(`items.${i}.p`,it.p,{w:'100px'})}</td><td class="r">${n2((+it.q||0)*(+it.p||0))}</td><td><button class="icbtn" data-del="${i}" title="Quitar">✕</button></td></tr>`).join('')}
-    <tr><td colspan="4" style="color:var(--ink-2)">Ajustes de la PI (descuentos, cargos bancarios, apoyo flete)</td><td class="r">${inp('ajuste',f.ajuste,{w:'100px'})}</td><td></td></tr>
-    <tr><td colspan="2"><button class="lnk" id="f-add" style="background:none;border:0;cursor:pointer">+ Agregar producto</button></td><td class="r"><b>${fmtN(f.items.reduce((s,i)=>s+(+i.q||0),0))}</b></td><td></td><td class="r"><b>${n2(P_.fobU)}</b></td><td></td></tr>
+  const fobItems=P_.fobU-(+f.ajuste||0), tcPj=tcProyeccion(f);
+  const s2=`<div class="panel"><header><h3><span class="stepn">4</span>Mix de productos y proyección</h3><span class="sub">Precios ${f.incoterm} · costo con factor proyectado ${P_.factor?fmtN(P_.factor,3):'—'} · T/C ${fmtN(tcPj,2)}</span><button class="btn soft" id="f-pi" style="margin-left:auto;font-size:12.5px;padding:6px 12px">Cargar desde PI</button></header>
+    <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Producto</th><th class="r">Unidades</th><th class="r">Precio unit. USD</th><th class="r">Total USD</th><th class="r">% peso</th><th class="r">Valor en CHL (USD/u)</th><th class="r">Costo CLP neto</th><th class="r">Costo total CLP</th><th></th></tr></thead><tbody>
+    ${f.items.map((it,i)=>{const ft=(+it.q||0)*(+it.p||0), vu=(+it.p||0)*(P_.factor||0), cc=vu*tcPj;
+      return `<tr><td>${inp(`items.${i}.sku`,it.sku,{type:'text',cls:'mono',w:'120px'})}</td><td>${inp(`items.${i}.nombre`,it.nombre,{type:'text',w:'200px'})}</td><td class="r">${inp(`items.${i}.q`,it.q,{w:'80px'})}</td><td class="r">${inp(`items.${i}.p`,it.p,{w:'100px'})}</td>
+      <td class="r">${n2(ft)}</td><td class="r">${fobItems?fmtN(ft/fobItems*100,0)+'%':'—'}</td><td class="r">${P_.factor?n2(vu):'—'}</td><td class="r"><b>${P_.factor?fmtCLP(cc):'—'}</b></td><td class="r">${P_.factor?fmtCLP(cc*(+it.q||0)):'—'}</td><td><button class="icbtn" data-del="${i}" title="Quitar">✕</button></td></tr>`}).join('')}
+    <tr><td colspan="4" style="color:var(--ink-2)">Ajustes de la PI (descuentos, cargos bancarios, apoyo flete)</td><td class="r">${inp('ajuste',f.ajuste,{w:'100px'})}</td><td colspan="5"></td></tr>
+    <tr class="tot"><td colspan="2"><button class="lnk" id="f-add" style="background:none;border:0;cursor:pointer">+ Agregar producto</button></td><td class="r"><b>${fmtN(f.items.reduce((s,i)=>s+(+i.q||0),0))}</b></td><td></td><td class="r"><b>${n2(P_.fobU)}</b></td><td></td><td></td><td></td><td class="r"><b>${P_.factor?fmtCLP(f.items.reduce((s,it)=>s+(+it.p||0)*P_.factor*tcPj*(+it.q||0),0)):'—'}</b></td><td></td></tr>
     </tbody></table></div></div>`;
   // 3 pago
   const ant=(+f.anticipo||0)/100;
@@ -1068,11 +1071,14 @@ function fichaView(){
      ${row('TOTAL IMPORTACIÓN BRUTO',n2(P_.brutoU),n0(P_.brutoC),n2(R.brutoU),realOk?n0(R.brutoC):v(null),{cls:'tot'})}
      <tr class="factor"><td>FACTOR IMPORTACIÓN</td><td></td><td class="r"><b>${P_.factor?fmtN(P_.factor,3):'—'}</b></td><td></td><td class="r"><b>${realOk&&R.factor?fmtN(R.factor,3):R.factor?`<span class="hint">parcial ${fmtN(R.factor,3)}</span>`:'—'}</b></td></tr>
     </tbody></table></div></div>`;
-  // 6 costeo por producto
-  const s6=`<div class="panel"><header><h3><span class="stepn">6</span>Costeo por producto</h3><span class="sub">Con factor ${realOk?'real':'proyectado'} ${fUse.factor?fmtN(fUse.factor,3):'—'} · T/C ${fmtN(tcUse,2)}</span></header>
-    <div class="tbl-wrap"><table><thead><tr><th>Producto / modelo</th><th class="r">Unidades</th><th class="r">FOB/u</th><th class="r">FOB total</th><th class="r">% peso</th><th class="r">Valor en CHL (USD/u)</th><th class="r">Costo CLP neto</th><th class="r">Costo total CLP</th></tr></thead><tbody>
-    ${f.items.map(it=>{const ft=(+it.q||0)*(+it.p||0);const vu=(+it.p||0)*(fUse.factor||0);const cc=vu*tcUse;return `<tr><td><b class="mono">${it.sku||'—'}</b><div class="hint">${it.nombre||''}</div></td><td class="r">${fmtN(it.q)}</td><td class="r">${n2(it.p)}</td><td class="r">${n2(ft)}</td><td class="r">${P_.fobU?fmtN(ft/(P_.fobU-(+f.ajuste||0))*100,0)+'%':'—'}</td><td class="r">${n2(vu)}</td><td class="r"><b>${fmtCLP(cc)}</b></td><td class="r">${fmtCLP(cc*(+it.q||0))}</td></tr>`}).join('')}
-    </tbody></table></div></div>`;
+  // 6 costeo real por producto
+  const tcR=f.tcReal||null;
+  const s6=`<div class="panel"><header><h3><span class="stepn">6</span>Costeo REAL de los productos</h3>${realOk?`<span class="sub">Factor real ${fmtN(R.factor,3)} · T/C real ${tcR?fmtN(tcR,2):'—'}</span>`:`<span class="chip s-comprar" style="margin-left:auto">Pendiente: faltan ${R.faltan} ${R.faltan===1?'campo':'campos'} del costeo real</span>`}</header>
+    <div class="tbl-wrap"><table><thead><tr><th>Producto / modelo</th><th class="r">Unidades</th><th class="r">FOB/u</th><th class="r">FOB total</th><th class="r">% peso</th><th class="r">Valor en CHL (USD/u)</th><th class="r">Costo CLP neto</th><th class="r">Costo total CLP</th><th class="r">vs. proyectado</th></tr></thead><tbody>
+    ${f.items.map(it=>{const ft=(+it.q||0)*(+it.p||0), ok=realOk&&tcR, vu=(+it.p||0)*(R.factor||0), cc=vu*(tcR||0), cp=(+it.p||0)*(P_.factor||0)*tcPj;
+      return `<tr><td><b class="mono">${it.sku||'—'}</b><div class="hint">${it.nombre||''}</div></td><td class="r">${fmtN(it.q)}</td><td class="r">${n2(it.p)}</td><td class="r">${n2(ft)}</td><td class="r">${fobItems?fmtN(ft/fobItems*100,0)+'%':'—'}</td>
+      <td class="r">${ok?n2(vu):'—'}</td><td class="r"><b>${ok?fmtCLP(cc):'—'}</b></td><td class="r">${ok?fmtCLP(cc*(+it.q||0)):'—'}</td><td class="r">${ok&&cp?`<span style="color:${cc>cp?'var(--bad)':'var(--ok)'}">${cc>cp?'+':''}${fmtN((cc/cp-1)*100,1)}%</span>`:'—'}</td></tr>`}).join('')}
+    </tbody></table></div>${realOk&&!tcR?'<p class="hint" style="margin:8px 0 0">Falta el T/C real promedio de pagos (sección 3) para calcular el costo en pesos.</p>':''}</div>`;
   // 7 ventas por portal
   const pk=fichaPortal, pp=f.portales[pk];
   const filas=f.items.map(it=>{const cd=(+it.p||0)*(fUse.factor||0)*tcUse, cnn=cd/(1-nn/100);
