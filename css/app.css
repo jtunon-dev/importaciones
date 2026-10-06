@@ -145,9 +145,10 @@ button.kpi[aria-pressed="true"] .v{color:var(--violet)}
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
 .search{flex:1 1 260px;max-width:380px}
 .search input{border-radius:10px;padding:9px 12px}
-table.imp th.stk,table.imp td.stk{position:sticky;left:0;z-index:1;background:var(--surface);box-shadow:1px 0 0 var(--line)}
-table.imp tbody tr:nth-child(even) td.stk{background:var(--surface-2)}
+table.imp th.stk,table.imp td.stk{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:8px 0 10px -8px rgba(0,0,0,.35),1px 0 0 var(--line);padding-left:16px}
+table.imp tbody tr:nth-child(even) td.stk{background:color-mix(in srgb,var(--surface-2) 55%,var(--surface))}
 table.imp tbody tr.click:hover td{background:var(--violet-soft)}
+.tbl-wrap:has(> table.imp){margin-inline:0;padding-inline:0}
 
 .drop{display:grid;gap:4px;place-items:center;text-align:center;padding:22px 16px;border:2px dashed var(--line);border-radius:14px;cursor:pointer;background:var(--surface-2);color:var(--ink)}
 .drop:hover,.drop.over{border-color:var(--violet);background:var(--violet-soft)}
