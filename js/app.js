@@ -994,7 +994,7 @@ function fichaView(){
     :`<span class="eyebrow">${linea} · ${f.proveedor} · ${f.via}</span><h2 style="font-size:22px;margin-top:4px">${f.id} <span class="mono lnk" style="font-size:15px">${f.ref||'sin referencia'}</span></h2>`;
   const baseOpts=`<option value="" ${f.base?'':'selected'}>— Sin base —</option>`+Object.keys(FICHA).filter(k=>k!=='__nueva').map(k=>`<option ${f.base===k?'selected':''}>${k}</option>`).join('');
   // 1 datos
-  const s1=`<div class="panel"><header><h3><span class="stepn">1</span>Datos de la importación</h3>${fichaNueva?'<span class="sub">Opcional: elige una importación base para copiar sus productos, gastos proyectados y condiciones</span>':''}</header>
+  const s1=`<div class="panel"><header><h3><span class="stepn">1</span>Datos de la importación</h3>${fichaNueva?'<span class="sub">Base opcional: copia productos, gastos y condiciones</span>':''}</header>
     <div class="fields f-datos">
      ${fichaNueva?`<label>Basada en<select class="fin" data-p="base">${baseOpts}</select></label>`:''}
      <label>N° de importación${inp('id',f.id,{type:'text',ph:'Ej. Chimenea 6'})}<span class="hint">Igual al nombre de la carpeta en Drive</span></label>
@@ -1006,7 +1006,7 @@ function fichaView(){
      <label>Puerto de origen (POL)${inp('pol',f.pol,{type:'text'})}</label>
     </div></div>`;
   // 2 productos
-  const s2=`<div class="panel"><header><h3><span class="stepn">2</span>Mix de productos</h3><span class="sub">Precios ${f.incoterm}</span><button class="btn soft" id="f-pi" style="margin-left:auto;font-size:12.5px;padding:6px 12px">Cargar desde PI</button></header>
+  const s2=`<div class="panel"><header><h3><span class="stepn">4</span>Mix de productos</h3><span class="sub">Precios ${f.incoterm}</span><button class="btn soft" id="f-pi" style="margin-left:auto;font-size:12.5px;padding:6px 12px">Cargar desde PI</button></header>
     <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Producto</th><th class="r">Unidades</th><th class="r">Precio unit. USD</th><th class="r">Total USD</th><th></th></tr></thead><tbody>
     ${f.items.map((it,i)=>`<tr><td>${inp(`items.${i}.sku`,it.sku,{type:'text',cls:'mono',w:'130px'})}</td><td>${inp(`items.${i}.nombre`,it.nombre,{type:'text',w:'220px'})}</td><td class="r">${inp(`items.${i}.q`,it.q,{w:'90px'})}</td><td class="r">${inp(`items.${i}.p`,it.p,{w:'100px'})}</td><td class="r">${n2((+it.q||0)*(+it.p||0))}</td><td><button class="icbtn" data-del="${i}" title="Quitar">✕</button></td></tr>`).join('')}
     <tr><td colspan="4" style="color:var(--ink-2)">Ajustes de la PI (descuentos, cargos bancarios, apoyo flete)</td><td class="r">${inp('ajuste',f.ajuste,{w:'100px'})}</td><td></td></tr>
@@ -1014,20 +1014,19 @@ function fichaView(){
     </tbody></table></div></div>`;
   // 3 pago
   const ant=(+f.anticipo||0)/100;
-  const s3=`<div class="panel"><header><h3><span class="stepn">3</span>Forma de pago al proveedor</h3></header>
-    <div class="fields">
+  const s3=`<div class="panel"><header><h3><span class="stepn">2</span>Forma de pago al proveedor</h3></header>
+    <div class="fields f-pago">
      <label>Pago adelantado (%)${inp('anticipo',f.anticipo)}<span class="hint">USD ${n2(P_.fobU*ant)} al confirmar la orden</span></label>
      <label>Pago del balance<select class="fin" data-p="balance">${Object.entries(BALANCE).map(([k,l])=>`<option value="${k}" ${f.balance===k?'selected':''}>${l}</option>`).join('')}</select><span class="hint">${ant<1?`Balance USD ${n2(P_.fobU*(1-ant))}`:'Sin balance: pago 100% adelantado'}</span></label>
     </div></div>`;
   // 4 tipo de cambio
-  const s4=`<div class="panel"><header><h3><span class="stepn">4</span>Tipo de cambio</h3></header>
-    <div class="fields">
+  const s4=`<div class="panel"><header><h3><span class="stepn">3</span>Tipo de cambio</h3></header>
+    <div class="fields f-tc">
      <label>Dólar hoy${inp('tcHoy',f.tcHoy)}<a class="hint lnk" href="https://si3.bcentral.cl/indicadoressiete/secure/Serie.aspx?gcode=PRE_TCO" target="_blank" rel="noopener">Banco Central · dólar observado ↗</a></label>
      <label>Dólar aduanero del mes${inp('tcAduana',f.tcAduana)}<a class="hint lnk" href="https://www.aduana.cl/tipo-de-cambio-2020-2024/aduana/2019-12-27/112312.html" target="_blank" rel="noopener">Aduana · tipo de cambio ↗</a></label>
      <label>Proyectar con<select class="fin" data-p="projTc"><option value="aduana" ${f.projTc==='aduana'?'selected':''}>Dólar aduanero</option><option value="hoy" ${f.projTc==='hoy'?'selected':''}>Dólar hoy</option></select><span class="hint">El IVA siempre usa el aduanero</span></label>
      <label>T/C real promedio de pagos${inp('tcReal',f.tcReal,{ph:'Se calcula al pagar'})}<span class="hint">Promedio ponderado anticipo + balance</span></label>
-    </div>
-    <p class="hint" style="margin:8px 0 0">En la versión final, el dólar observado se actualiza solo cada mañana desde la API del Banco Central y el aduanero se toma al inicio de cada mes.</p></div>`;
+    </div></div>`;
   // 5 costeo
   const row=(lbl,pu,pc,ru,rc,opt={})=>`<tr class="${opt.cls||''}"><td>${lbl}${opt.tag?` <span class="hint">${opt.tag}</span>`:''}</td><td class="r">${pu}</td><td class="r">${pc}</td><td class="r rc">${ru}</td><td class="r rc">${rc}</td></tr>`;
   const v=(x,d=2)=>x==null?'<span class="hint">—</span>':(d?n2(x):n0(x));
@@ -1088,7 +1087,7 @@ function fichaView(){
     <div class="kpi"><span class="eyebrow">Factor real</span><span class="v num" style="color:${realOk?'var(--ok)':'var(--ink-3)'}">${realOk&&R.factor?fmtN(R.factor,3):'—'}</span><span class="d">${realOk?'Costeo cerrado':`Faltan ${R.faltan} campos`}</span></div>
     <div class="kpi"><span class="eyebrow">Inversión total (sin IVA)</span><span class="v num">${fmtCLP(realOk?R.totC:P_.totC)}</span><span class="d">${realOk?'Real':'Proyectada'}</span></div>
    </div>
-   ${s1}${s2}${s3}${s4}${s5}${s6}${s7}
+   <div class="ficha-top">${s1}${s3}${s4}</div>${s2}${s5}${s6}${s7}
   </section>`;
 }
 function setPath(o,path,val){const ks=path.split('.');let x=o;for(let i=0;i<ks.length-1;i++){const k=ks[i];if(x[k]==null)x[k]=/^\d+$/.test(ks[i+1])?[]:{};x=x[k]}x[ks[ks.length-1]]=val}
