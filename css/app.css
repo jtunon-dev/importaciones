@@ -276,3 +276,5 @@ input.ro:focus{border-color:var(--line);box-shadow:none}
 .ficha-top .hint{font-size:11.5px;line-height:1.3}
 @media (max-width:1180px){.ficha-top{grid-template-columns:repeat(2,minmax(0,1fr))}.ficha-top>.panel:first-child{grid-column:1/-1}.ficha-top .fields.f-datos{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (max-width:700px){.ficha-top{grid-template-columns:1fr}.ficha-top .fields.f-datos,.ficha-top .fields.f-tc{grid-template-columns:1fr}}
+
+td input.fin[data-num]{text-align:right}
