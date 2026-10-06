@@ -1051,13 +1051,13 @@ function fichaView(){
      <div class="f-span"><span class="lbl">Proyectar FOB, flete y seguro con${f.projTc==='manual'?' <span class="hint">· ninguno: se usan los montos escritos</span>':''}</span><div class="seg" id="f-projtc">${Object.entries(TC_PROY).map(([k,l])=>`<button type="button" aria-pressed="${f.projTc===k}" data-projtc="${k}">${(s=>s[0].toUpperCase()+s.slice(1))(l.replace('Dólar ',''))}</button>`).join('')}</div></div>
     </div></div>`;
   // 5 costeo
-  const row=(lbl,pu,pc,ru,rc,opt={})=>`<tr class="${opt.cls||''}"><td>${lbl}${opt.tag?` <span class="hint">${opt.tag}</span>`:''}</td><td class="r">${pu}</td><td class="r">${pc}</td><td class="r rc">${ru}</td><td class="r rc">${rc}</td></tr>`;
+  const row=(lbl,pu,pc,ru,rc,opt={})=>`<tr class="${opt.cls||''}"><td>${lbl}${opt.tag?` <span class="hint">${opt.tag}</span>`:''}</td><td class="r pc">${pu}</td><td class="r pc">${pc}</td><td class="r rc">${ru}</td><td class="r rc">${rc}</td></tr>`;
   const v=(x,d=2)=>x==null?'<span class="hint">—</span>':(d?n2(x):n0(x));
   const s5=`<div class="panel"><header><h3><span class="stepn">5</span>Costeo de la importación</h3>
      <span class="chip ${realOk?'s-ok':'s-comprar'}" style="margin-left:auto">${realOk?'Costeo real completo':`Real pendiente: ${R.faltan} ${R.faltan===1?'campo':'campos'}`}</span>${f.validar?'<span class="chip s-comprar">Sin validar</span>':''}</header>
     <p class="hint" style="margin:-6px 0 10px">Edita cualquier gasto proyectado. La columna real se completa con la DIN, las facturas y los Swift de la carpeta o el correo.</p>
-    <div class="tbl-wrap"><table class="costeo"><thead><tr><th></th><th class="r" colspan="2" style="background:var(--warn-bg)">PROYECTADO</th><th class="r" colspan="2" style="background:var(--ok-bg)">REAL</th></tr>
-     <tr><th>Concepto</th><th class="r">USD</th><th class="r">CLP</th><th class="r">USD</th><th class="r">CLP</th></tr></thead><tbody>
+    <div class="tbl-wrap"><table class="costeo"><thead><tr><th></th><th class="r pc-k" colspan="2">PROYECTADO</th><th class="r rc-k" colspan="2">REAL</th></tr>
+     <tr><th>Concepto</th><th class="r pc">USD</th><th class="r pc">CLP</th><th class="r rc">USD</th><th class="r rc">CLP</th></tr></thead><tbody>
      ${row(f.incoterm,n2(P_.fobU),n0(P_.fobC),n2(P_.fobU),inp('real.fobClp',R.fobC,{ph:'desde pagos',w:'120px'}))}
      ${row('Flete',inp('proj.flete.0',P_.fl?.[0],{w:'90px'}),inp('proj.flete.1',P_.fl?.[1],{w:'110px'}),inp('real.flete.0',R.fl?.[0],{w:'90px'}),inp('real.flete.1',R.fl?.[1],{w:'110px'}))}
      ${row('Seguro',inp('proj.seguro.0',P_.sg?.[0],{w:'90px'}),inp('proj.seguro.1',P_.sg?.[1],{w:'110px'}),inp('real.seguro.0',R.sg?.[0],{w:'90px'}),inp('real.seguro.1',R.sg?.[1],{w:'110px'}))}
@@ -1069,7 +1069,7 @@ function fichaView(){
      ${row('TOTAL IMPORTACIÓN',n2(P_.totU),n0(P_.totC),n2(R.totU),realOk?n0(R.totC):v(null),{cls:'tot'})}
      ${row('TOTAL IVA',n2(P_.totIvaU),n0(P_.totIvaC),n2(R.totIvaU),n0(R.totIvaC),{cls:'tot'})}
      ${row('TOTAL IMPORTACIÓN BRUTO',n2(P_.brutoU),n0(P_.brutoC),n2(R.brutoU),realOk?n0(R.brutoC):v(null),{cls:'tot'})}
-     <tr class="factor"><td>FACTOR IMPORTACIÓN</td><td></td><td class="r"><b>${P_.factor?fmtN(P_.factor,3):'—'}</b></td><td></td><td class="r"><b>${realOk&&R.factor?fmtN(R.factor,3):R.factor?`<span class="hint">parcial ${fmtN(R.factor,3)}</span>`:'—'}</b></td></tr>
+     <tr class="factor"><td>FACTOR IMPORTACIÓN</td><td class="pc"></td><td class="r pc"><b>${P_.factor?fmtN(P_.factor,3):'—'}</b></td><td class="rc"></td><td class="r rc"><b>${realOk&&R.factor?fmtN(R.factor,3):R.factor?`<span class="hint">parcial ${fmtN(R.factor,3)}</span>`:'—'}</b></td></tr>
     </tbody></table></div></div>`;
   // 6 costeo real por producto
   const tcR=f.tcReal||null;
