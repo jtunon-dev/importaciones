@@ -76,10 +76,11 @@ function renderTabs(){
 function topline(){
   const hh=CARGADO_EN?CARGADO_EN.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}):'—';
   const pend=CORREOS.filter(c=>c.estado==='por asignar').length;
-  return `<div class="topline"><span class="title"><b>retail.cl</b> · Importaciones</span>
+  const qa=window.ENTORNO==='QA';
+  return `<div class="topline"><span class="title"><b>retail.cl</b> · Importaciones</span>${qa?'<span class="chip s-quiebre" title="Ambiente de pruebas: los cambios no tocan el Sheets de producción">QA · datos de prueba</span>':''}
    <span class="chip ${EDITOR?'s-ok':'s-sobre'}">${EDITOR?'Editor':'Solo lectura'}</span>
-   <div class="sync"><span class="chip s-ok" title="Stock y ventas de Defontana">Stock ${CFG.stock_fecha?fmtD(CFG.stock_fecha):'—'}</span><span class="chip s-ok" title="Datos leídos del Sheets">Sheets ${hh}</span>${pend?`<span class="chip s-comprar">${pend} correo${pend>1?'s':''} por asignar</span>`:''}
-   <span id="save-st" class="hint"></span><button class="btn" id="recargar" title="Volver a leer el Sheets">Actualizar</button>
+   <div class="sync"><span class="chip s-ok" title="Stock y ventas de Defontana">Stock ${CFG.stock_fecha?fmtD(CFG.stock_fecha):'—'}</span><span class="chip s-ok" title="${qa?'Datos de prueba guardados en el artifact':'Datos leídos del Sheets'}">${qa?'Datos QA':'Sheets'} ${hh}</span>${pend?`<span class="chip s-comprar">${pend} correo${pend>1?'s':''} por asignar</span>`:''}
+   <span id="save-st" class="hint"></span>${qa?'<button class="btn" id="reiniciar-qa" title="Vuelve los datos de prueba a la copia inicial">Reiniciar QA</button>':''}<button class="btn" id="recargar" title="Volver a leer el Sheets">Actualizar</button>
    <span class="hint" title="${USUARIO?.email||''}">${USUARIO?.name||USUARIO?.email||''}</span><button class="btn" id="salir">Salir</button></div></div>`}
 function render(){
   renderTabs();
@@ -87,6 +88,7 @@ function render(){
   $('#main').innerHTML=topline()+v;
   ({resumen:bindResumen,reposicion:bindRepo,importaciones:bindImp,caja:bindCaja,carga:bindCarga,correos:bindCorreos,ficha:bindFicha})[cur]();
   $('#recargar').onclick=recargar; $('#salir').onclick=salir;
+  const rq=$('#reiniciar-qa'); if(rq) rq.onclick=async()=>{if(!confirm('¿Volver los datos de prueba a la copia inicial? Se pierden los cambios hechos en QA.'))return;try{await G.reiniciar();await Store.cargar();toast('Datos de QA reiniciados.');render()}catch(err){toast(err.message)}};
   if(!EDITOR) soloLectura($('#main'));
   pintarGuardado();
 }
@@ -1236,6 +1238,11 @@ async function entrar(){
       if(err.status===404||err.status===403){pantalla(`<div class="panel"><h2>Sin acceso</h2><p>La cuenta <b>${esc(USUARIO.email)}</b> no tiene acceso al Sheets IMPORTACIONES 2EBOX. Pide a Jorge que lo comparta contigo (lector para ver, editor para editar).</p><p class="hint">Detalle: ${esc(err.message)}</p><button class="btn" onclick="salir()">Entrar con otra cuenta</button></div>`);return}
       throw err}
     const falt=await Store.faltantes();
+    if(falt.length&&window.ENTORNO==='QA'){
+      pantalla(`<div class="panel" style="display:grid;gap:12px"><span class="eyebrow">Ambiente QA</span><h2>Sin datos de prueba</h2><p>Este artifact todavía no tiene su copia de datos. Cárgala desde la semilla guardada en el artifact.</p><div><button class="btn primary" id="qa-cargar">Cargar datos de prueba</button></div><div id="ini-st" class="hint"></div></div>`);
+      $('#qa-cargar').onclick=async()=>{try{await G.reiniciar();await entrar()}catch(err){$('#ini-st').textContent='Error: '+err.message}};
+      return;
+    }
     if(falt.length){
       if(!EDITOR){pantalla(`<div class="panel"><h2>Base en preparación</h2><p>Todavía no se crean las pestañas de la app en el Sheets. Vuelve a intentar más tarde.</p></div>`);return}
       pantalla(`<div class="panel" style="display:grid;gap:12px"><span class="eyebrow">Primera vez</span><h2>Crear la base en el Sheets</h2>
@@ -1255,6 +1262,7 @@ async function entrar(){
   }
 }
 function boot(){
+  if(window.ENTORNO==='QA'){pantalla('<div class="panel"><h2>Cargando QA…</h2></div>');G.init().then(entrar).catch(err=>pantalla(`<div class="panel"><h2>No se pudo abrir QA</h2><p class="err">${esc(err.message)}</p></div>`));return}
   if(!window.google?.accounts?.oauth2){setTimeout(boot,150);return}
   G.init();
   if(G.conectado()){entrar();return}

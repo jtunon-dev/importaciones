@@ -70,3 +70,20 @@ node tools/seed.js <mockup.html> <salida.json>
 ```
 
 La salida contiene datos del negocio: **no la subas a este repositorio**.
+
+## Ambientes: QA y producción
+
+| Ambiente | Dónde | Datos |
+|---|---|---|
+| **QA** | Artifact de Claude: https://claude.ai/artifact/V9dkQ9jY86NmJixMTgVXX8 (privado) | Copia de prueba guardada en la base del artifact. **No toca el Sheets.** Se reinicia con el botón "Reiniciar QA". |
+| **Producción** | https://jtunon-dev.github.io/importaciones/ | Sheets IMPORTACIONES 2EBOX, con el login de Google de cada usuario |
+
+Ambos ambientes usan el mismo código. La única diferencia es la capa de datos:
+- QA usa `js/qa.js` (base del artifact, sin login).
+- Producción usa `js/google.js` (Sheets y Drive con OAuth).
+
+Flujo de un cambio:
+1. Se edita el código en `js/` y `css/`.
+2. `node tools/build_qa.js` genera `dist/qa.html`, que se publica en el artifact de QA.
+3. Jorge lo prueba en QA.
+4. Si lo aprueba ("pasar a producción"), se hace `git push` a `main` y GitHub Pages lo publica.
