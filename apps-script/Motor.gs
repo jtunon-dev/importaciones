@@ -328,24 +328,29 @@ function armarReporte_(ss, cfg, hoy) {
   // HTML apto para correo: tablas, bgcolor y estilos en línea (Gmail y Outlook ignoran CSS moderno)
   var BORDE = '1px solid #CFCBE2', NAVY = '#1B1640', LILA = '#EEEDF5';
   var kpi = function (t, v, d) {
-    return '<td width="25%" valign="top" style="padding:6px">' +
-      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate"><tr>' +
-      '<td bgcolor="' + NAVY + '" style="background-color:' + NAVY + ';border:1px solid ' + NAVY + ';border-radius:10px;padding:12px 14px">' +
-      '<div style="font-size:10px;letter-spacing:1px;color:#C9C2EE;text-transform:uppercase;font-family:Arial,sans-serif">' + t + '</div>' +
-      '<div style="font-size:19px;font-weight:bold;color:#FFFFFF;margin:4px 0;white-space:nowrap;font-family:Arial,sans-serif">' + v + '</div>' +
-      '<div style="font-size:11px;color:#C9C2EE;font-family:Arial,sans-serif">' + d + '</div></td></tr></table></td>';
+    return '<td class="kpi" width="49%" height="96" valign="top" bgcolor="' + NAVY + '" style="background-color:' + NAVY + ';height:96px;border-radius:10px;padding:12px 14px;font-family:Arial,sans-serif">' +
+      '<div style="font-size:10px;letter-spacing:1px;color:#C9C2EE;text-transform:uppercase">' + t + '</div>' +
+      '<div class="kpi-v" style="font-size:22px;font-weight:bold;color:#FFFFFF;margin:6px 0 4px">' + v + '</div>' +
+      '<div style="font-size:11px;color:#C9C2EE">' + d + '</div></td>';
   };
-  var th = function (c, der) { return '<th align="' + (der ? 'right' : 'left') + '" bgcolor="' + LILA + '" style="background-color:' + LILA + ';border:' + BORDE + ';padding:7px 9px;font-size:12px;color:' + NAVY + '">' + c + '</th>'; };
-  var tabla = function (cab, der, filas, vacio) {
+  var grilla = function (k) {
+    var sep = '<td width="2%" style="font-size:0;line-height:0">&nbsp;</td>';
+    return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 4px">' +
+      '<tr>' + k[0] + sep + k[1] + '</tr><tr><td colspan="3" height="10" style="font-size:0;line-height:0;height:10px">&nbsp;</td></tr>' +
+      '<tr>' + k[2] + sep + k[3] + '</tr></table>';
+  };
+  var th = function (c, der, oc) { return '<th' + (oc ? ' class="ocultar-m"' : '') + ' align="' + (der ? 'right' : 'left') + '" bgcolor="' + LILA + '" style="background-color:' + LILA + ';border:' + BORDE + ';padding:7px 9px;font-size:12px;color:' + NAVY + '">' + c + '</th>'; };
+  var tabla = function (cab, der, filas, vacio, ocultar) {
+    ocultar = ocultar || [];
     if (!filas) return '<p style="color:#8A86A6;font-size:13px">' + vacio + '</p>';
-    return '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:' + BORDE + ';font-size:13px;font-family:Arial,sans-serif">' +
-      '<tr>' + cab.map(function (c, i) { return th(c, der.indexOf(i) >= 0); }).join('') + '</tr>' + filas + '</table>';
+    return '<table class="tbl" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:' + BORDE + ';font-size:13px;font-family:Arial,sans-serif">' +
+      '<tr>' + cab.map(function (c, i) { return th(c, der.indexOf(i) >= 0, ocultar.indexOf(i) >= 0); }).join('') + '</tr>' + filas + '</table>';
   };
-  var td = function (v, der, extra) { return '<td align="' + (der ? 'right' : 'left') + '" style="border:' + BORDE + ';padding:7px 9px;color:' + NAVY + (der ? ';white-space:nowrap' : '') + (extra || '') + '">' + v + '</td>'; };
+  var td = function (v, der, extra, oc) { return '<td' + (oc ? ' class="ocultar-m"' : '') + ' align="' + (der ? 'right' : 'left') + '" style="border:' + BORDE + ';padding:7px 9px;color:' + NAVY + (der ? ';white-space:nowrap' : '') + (extra || '') + '">' + v + '</td>'; };
   filasImp = curso.map(function (e) {
     var eta = e.bodega || e.bodega_est || e.eta || e.eta_est || '';
-    return '<tr>' + td('<b>' + e.id + '</b><br><span style="color:#8A86A6;font-size:12px">' + (e.ref || '') + '</span>') + td(e.estado) + td(e.proveedor || '') +
-      td(e.unidades || '—', true) + td('US$ ' + Math.round(Number(e.fob_usd) || 0).toLocaleString('es-CL'), true) + td(fecha(eta), false, ';white-space:nowrap') + '</tr>';
+    return '<tr>' + td('<b>' + e.id + '</b><br><span style="color:#8A86A6;font-size:12px">' + (e.ref || '') + '</span>') + td(e.estado) + td(e.proveedor || '', false, '', true) +
+      td(e.unidades || '—', true, '', true) + td('US$ ' + Math.round(Number(e.fob_usd) || 0).toLocaleString('es-CL'), true) + td(fecha(eta), false, ';white-space:nowrap') + '</tr>';
   }).join('');
   filasPag = p30.map(function (p) {
     return '<tr>' + td(fecha(p.fecha) + (String(p.fecha_estimada).indexOf('S') === 0 ? '<br><span style="color:#8A86A6;font-size:11px">estimada</span>' : ''), false, ';white-space:nowrap') +
@@ -353,16 +358,18 @@ function armarReporte_(ss, cfg, hoy) {
   }).join('');
   var boton = '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 4px"><tr><td bgcolor="#6D49F2" style="background-color:#6D49F2;border-radius:8px">' +
     '<a href="' + APP_URL + '" target="_blank" style="display:inline-block;padding:11px 22px;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#FFFFFF;text-decoration:none;border-radius:8px">Abrir app de importaciones →</a></td></tr></table>';
-  var html = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#E7E8EF" style="background-color:#E7E8EF"><tr><td align="center" style="padding:16px 8px">' +
-    '<table role="presentation" width="720" cellpadding="0" cellspacing="0" bgcolor="#F6F6FA" style="max-width:720px;width:100%;background-color:#F6F6FA;border:' + BORDE + ';border-radius:12px;font-family:Arial,sans-serif;color:' + NAVY + '"><tr><td style="padding:20px 22px">' +
-    '<div style="font-size:22px;font-weight:bold">Importaciones · ' + mes + '</div>' +
+  var estilo = '<style>@media only screen and (max-width:520px){' +
+    '.envoltorio{padding:8px 0!important}.marco{padding:14px 10px!important}.kpi{padding:10px 10px!important}.kpi-v{font-size:17px!important}' +
+    '.tbl th,.tbl td{padding:5px 5px!important;font-size:11.5px!important}.ocultar-m{display:none!important}.titulo{font-size:19px!important}}</style>';
+  var html = estilo + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#E7E8EF" style="background-color:#E7E8EF"><tr><td class="envoltorio" align="center" style="padding:16px 8px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#F6F6FA" style="max-width:720px;width:100%;background-color:#F6F6FA;border:' + BORDE + ';border-radius:12px;font-family:Arial,sans-serif;color:' + NAVY + '"><tr><td class="marco" style="padding:20px 22px">' +
+    '<div class="titulo" style="font-size:22px;font-weight:bold">Importaciones · ' + mes + '</div>' +
     '<div style="font-size:13px;color:#4F4A70;margin:4px 0 10px">Resumen automático al ' + fecha(hoyS) + '. El detalle en vivo (costeos, factores, reposición) está en la app:</div>' + boton +
-    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 4px;table-layout:fixed"><tr>' +
-    kpi('Importaciones en curso', String(curso.length), curso.map(function (e) { return e.id; }).join(', ') || '—') +
-    kpi('Por pagar 30 días', clp(suma(p30)), p30.length + ' pagos') +
-    kpi('Por pagar 90 días', clp(suma(p90)), p90.length + ' pagos') +
-    kpi('Pagado ' + y, clp(pagY), 'vs ' + ya + ' a la fecha: ' + yoy) + '</tr></table>' +
-    '<div style="font-size:16px;font-weight:bold;margin:18px 0 8px">Importaciones en curso</div>' + tabla(['Importación', 'Estado', 'Proveedor', 'Unidades', 'FOB', 'ETA bodega'], [3, 4], filasImp, 'No hay importaciones en curso.') +
+    grilla([kpi('Importaciones en curso', String(curso.length), curso.map(function (e) { return e.id; }).join(', ') || '—'),
+      kpi('Por pagar 30 días', clp(suma(p30)), p30.length + ' pagos'),
+      kpi('Por pagar 90 días', clp(suma(p90)), p90.length + ' pagos'),
+      kpi('Pagado ' + y, clp(pagY), 'vs ' + ya + ' a la fecha: ' + yoy)]) +
+    '<div style="font-size:16px;font-weight:bold;margin:18px 0 8px">Importaciones en curso</div>' + tabla(['Importación', 'Estado', 'Proveedor', 'Unidades', 'FOB', 'ETA bodega'], [3, 4], filasImp, 'No hay importaciones en curso.', [2, 3]) +
     '<div style="font-size:16px;font-weight:bold;margin:18px 0 8px">Pagos de los próximos 30 días</div>' + tabla(['Fecha', 'Importación', 'Concepto', 'Monto'], [3], filasPag, 'Sin pagos en los próximos 30 días.') +
     '<div style="font-size:16px;font-weight:bold;margin:18px 0 8px">Stock</div>' +
     '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:' + BORDE + ';font-size:13px">' +
