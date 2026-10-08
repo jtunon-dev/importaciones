@@ -356,9 +356,15 @@ function todosPagos(){
   CAJA_COMP.forEach(c=>ps.push({fecha:c.fecha||c.mes+'-15',cat:{prov:'prov',flete:'flete',iva:'imp',local:'agencia'}[c.tipo]||'agencia',concepto:c.txt,clp:c.clp||c.usd*TC,mon:c.usd?'USD':'CLP',monto:c.usd||c.clp,tc:null,fuente:'Registro manual',emb:c.emb,est:false,estado:(c.fecha||c.mes+'-15')<HOY_S?'Pagado':'Proyectado',manual:true}));
   return ps.sort((a,b)=>a.fecha<b.fecha?-1:1);
 }
+const mesMas=(k,n)=>{let [y,m]=k.split('-').map(Number);m+=n;while(m>12){m-=12;y++}while(m<1){m+=12;y--}return `${y}-${String(m).padStart(2,'0')}`};
+function rangoCaja(k=cajaRango){
+  const hoy=HOY_S.slice(0,7), fs=todosPagos().map(p=>p.fecha.slice(0,7)).sort();
+  if(k==='12m') return [mesMas(hoy,-12),mesMas(hoy,-1)];
+  if(k==='futuro') return [hoy,fs.length?fs[fs.length-1]:mesMas(hoy,4)];
+  return [fs[0]||mesMas(hoy,-12),fs.length?fs[fs.length-1]:mesMas(hoy,4)];
+}
 function mesesRango(){
-  const ini=cajaRango==='futuro'?'2026-10':cajaRango==='12m'?'2025-10':'2025-03';
-  const fin=cajaRango==='12m'?'2026-09':'2027-02';
+  const [ini,fin]=rangoCaja();
   const out=[];let [y,m]=ini.split('-').map(Number);
   while(`${y}-${String(m).padStart(2,'0')}`<=fin){out.push(`${y}-${String(m).padStart(2,'0')}`);m++;if(m>12){m=1;y++}}
   return out;
@@ -403,7 +409,7 @@ function caja(){
    <div class="head"><div><h2 style="font-size:22px;margin-top:4px">Flujo de caja de compras</h2>
      <p>Cada pago en su fecha: anticipo y saldo al proveedor, flete internacional (anticipo al zarpe y saldo al arribo), impuestos de internación al aceptar la DIN, agencia y gastos portuarios, y el flete a bodega. Lo pagado va en color sólido; lo proyectado, achurado.</p></div>
      <div class="actions">
-      <div class="seg" id="rng">${[['todo','Mar-25 → feb-27'],['12m','Últimos 12 meses'],['futuro','Próximos meses']].map(([k,l])=>`<button aria-pressed="${cajaRango===k}" data-r="${k}">${l}</button>`).join('')}</div>
+      <div class="seg" id="rng">${[['todo',(()=>{const r=rangoCaja('todo');return 'Todo · '+mesLbl(r[0])+' → '+mesLbl(r[1])})()],['12m','Últimos 12 meses'],['futuro','Próximos meses']].map(([k,l])=>`<button aria-pressed="${cajaRango===k}" data-r="${k}">${l}</button>`).join('')}</div>
       <label style="display:flex;align-items:center;gap:8px;font-weight:500"><input type="checkbox" id="inc" ${incluirCot?'checked':''} style="width:auto"> Incluir cotizaciones</label>
 </div></div>
    <div class="kpis">
@@ -414,12 +420,31 @@ function caja(){
    </div>
    <div class="panel"><header><h3>Salidas por mes (CLP millones)</h3><span class="sub">Pasa el mouse por cada tramo · clic en el mes para ver sus pagos</span>
      <div class="legend" style="margin-left:auto">${CAT_ORD.map(c=>`<span><i style="background:${CAT[c][1]}"></i>${CAT[c][0]}</span>`).join('')}<span><i style="background:repeating-linear-gradient(45deg,var(--ink-3) 0 2px,transparent 2px 4px)"></i>Proyectado</span></div></header>${svg}</div>
+   ${tablaItems(ps,meses)}
    <div class="panel"><header><h3>${cajaMesSel?'Pagos de '+mesLbl(cajaMesSel,{month:'long',year:'numeric'}):'Calendario de pagos'}</h3><span class="sub">${cajaMesSel?'<button class="lnk" id="todos" style="background:none;border:0;cursor:pointer">Ver todos</button>':'Desde hace 60 días en adelante · clic en un mes del gráfico para filtrar'}</span></header>
     <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Importación</th><th>Tipo</th><th>Concepto</th><th class="r">Monto original</th><th class="r">T/C</th><th class="r">CLP</th><th>Fuente</th><th>Estado</th></tr></thead><tbody>
      ${tabla.length?tabla.map(p=>`<tr><td>${fmtD(p.fecha)}${p.est?'<div class="hint">estimada</div>':''}</td><td><b>${p.emb}</b></td><td><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:9px;height:9px;border-radius:2px;background:${CAT[p.cat][1]};display:inline-block"></i>${CAT[p.cat][0]}</span></td><td style="white-space:normal;min-width:240px;color:var(--ink-2)">${p.concepto}</td><td class="r">${fmtMonto(p.mon,p.monto)}</td><td class="r hint">${p.mon==='USD'?(p.tc?fmtN(p.tc,2):'por confirmar'):'—'}</td><td class="r">${fmtCLP(p.clp)}</td><td class="hint">${p.fuente||''}</td><td><span class="chip ${p.estado==='Pagado'?'s-ok':p.estado==='Cotización'?'s-sobre':'s-planificar'}">${p.estado}</span></td></tr>`).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--ink-3);padding:24px">Sin pagos en este período.</td></tr>'}
     </tbody></table></div>
     <p class="hint" style="margin:10px 0 0">Montos desde la pestaña de costeo de cada importación (real si existe, si no proyectado). Pagos tomados de los correos de Netnow (solicitudes de pago, Swift y DIN), de los Swift en las carpetas de Drive y, cuando no hay otro respaldo, de la pestaña de costeo del Sheets. Las fechas sin respaldo se marcan como estimadas. Los USD sin T/C conocido se valorizan a ${fmtN(TC)} hasta registrar el pago.</p></div>
   </section>`;
+}
+// Montos pagados por ítem: período filtrado, año en curso a la fecha y variación vs. mismo período del año anterior.
+function tablaItems(ps,meses){
+  const pag=ps.filter(p=>p.estado==='Pagado');
+  const per=cajaMesSel?[cajaMesSel]:meses, y=HOY_S.slice(0,4), ya=String(+y-1), corte=HOY_S.slice(5);
+  const enPer=p=>per.includes(p.fecha.slice(0,7));
+  const ytd=p=>p.fecha.slice(0,4)===y&&p.fecha<=HOY_S, ytdA=p=>p.fecha.slice(0,4)===ya&&p.fecha.slice(5)<=corte;
+  const fila=f=>{const a=pag.filter(p=>f(p)), v=k=>a.filter(k).reduce((s,p)=>s+p.clp,0);return {per:v(enPer),ytd:v(ytd),ant:v(ytdA)}};
+  const rows=CAT_ORD.map(c=>({c,...fila(p=>p.cat===c)})), tot=fila(()=>true);
+  const yoy=(a,b)=>!b?(a?'<span class="hint">nuevo</span>':'—'):`<span style="color:${a>b?'var(--bad)':'var(--ok)'};font-weight:600">${a>b?'+':''}${fmtN((a/b-1)*100,1)}%</span>`;
+  const lblPer=cajaMesSel?mesLbl(cajaMesSel,{month:'long',year:'numeric'}):`${mesLbl(per[0])} → ${mesLbl(per[per.length-1])}`;
+  const fechaCorte=D(HOY_S).toLocaleDateString('es-CL',{day:'numeric',month:'short'}).replace('.','');
+  const tr=(lbl,r,cls='')=>`<tr class="${cls}"><td>${lbl}</td><td class="r">${fmtCLP(r.per)}</td><td class="r">${fmtCLP(r.ytd)}</td><td class="r hint">${fmtCLP(r.ant)}</td><td class="r">${yoy(r.ytd,r.ant)}</td></tr>`;
+  return `<div class="panel"><header><h3>Montos pagados por ítem</h3><span class="sub">Solo pagos realizados · YoY compara ${y} con ${ya} al mismo día (${fechaCorte})</span></header>
+    <div class="tbl-wrap"><table><thead><tr><th>Ítem</th><th class="r">Período filtrado<div class="hint" style="font-weight:400">${lblPer}</div></th><th class="r">Total año ${y}<div class="hint" style="font-weight:400">al ${fechaCorte}</div></th><th class="r">${ya}<div class="hint" style="font-weight:400">al ${fechaCorte}</div></th><th class="r">Variación YoY</th></tr></thead><tbody>
+    ${rows.map(r=>tr(`<span style="display:inline-flex;align-items:center;gap:8px"><i style="width:10px;height:10px;border-radius:3px;background:${CAT[r.c][1]};display:inline-block"></i>${CAT[r.c][0]}</span>`,r)).join('')}
+    ${tr('<b>Total</b>',tot,'tot')}
+    </tbody></table></div><p class="hint" style="margin:8px 0 0">Una variación positiva (en rojo) significa que este año se ha pagado más que el anterior a la misma fecha.</p></div>`;
 }
 function bindCaja(){
   document.querySelectorAll('#rng button').forEach(b=>b.onclick=()=>{cajaRango=b.dataset.r;render()});
