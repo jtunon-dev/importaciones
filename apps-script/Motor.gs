@@ -38,7 +38,8 @@ function sincronizar() {
     var cfg = leerConfig_(ss);
     var imps = leerTabla_(ss, 'BD_Importaciones');
     var resDrive = escanearDrive_(ss, cfg, imps);
-    var resGmail = escanearGmail_(ss, cfg, imps);
+    var limpiados = limpiarCorreos_(ss, imps);
+    var resGmail = escanearGmail_(ss, cfg, imps) + (limpiados ? ', ' + limpiados + ' descartados (no son nuestros)' : '');
     var resAdj = guardarAdjuntos_(ss, imps);
     log_(ss, 'Motor', '', 'Drive: ' + resDrive + ' · Gmail: ' + resGmail + ' · Adjuntos: ' + resAdj);
   } finally {
@@ -145,6 +146,30 @@ function tipoCorreo_(txt) {
   return 'Otro';
 }
 
+// Solo correos de NUESTRAS importaciones (chimeneas, telones, Reolink). Las importaciones propias de Netnow
+// (memorias, computadores, etc.) pasan por Grace pero no son de 2ebox / Retail.cl y se descartan.
+var PALABRAS_NUESTRAS = /chimenea|fireplace|tel[oó]n|telones|projector screen|projection screen|reolink|longhua|gengxin|shenzhen future|wjwplh|retail\.cl|2ebox|ND-189|IF-[456]0FSB/i;
+function esNuestro_(texto, calzaReferencia) {
+  if (calzaReferencia) return true;           // menciona una referencia de nuestras importaciones
+  return PALABRAS_NUESTRAS.test(texto);       // o habla de nuestras líneas/proveedores
+}
+
+// Borra de BD_Correos los que no son nuestros (por ejemplo, traídos antes de este filtro). Respeta los asignados a mano.
+function limpiarCorreos_(ss, imps) {
+  var h = cabecera_(ss, 'BD_Correos'), cor = leerTabla_(ss, 'BD_Correos'), tk = tokens_(imps), quedan = [], borrados = 0;
+  cor.filas.forEach(function (c) {
+    if (c.estado === 'asignado' || c.estado === 'archivado') { quedan.push(fila_(h, c)); return; }
+    var th = null; try { th = GmailApp.getThreadById(c.thread_id); } catch (e) {}
+    var texto = String(c.asunto || '') + '\n';
+    if (th) th.getMessages().forEach(function (m) { texto += m.getPlainBody().slice(0, 20000) + '\n'; });
+    var hay = texto.toLowerCase();
+    var calza = tk.some(function (x) { return x.t.some(function (t) { return contiene_(hay, t); }); });
+    if (esNuestro_(texto, calza)) quedan.push(fila_(h, c)); else borrados++;
+  });
+  if (borrados) reescribir_(ss, 'BD_Correos', h, quedan);
+  return borrados;
+}
+
 function escanearGmail_(ss, cfg, imps) {
   var h = cabecera_(ss, 'BD_Correos');
   var existentes = {};
@@ -161,6 +186,8 @@ function escanearGmail_(ss, cfg, imps) {
       m.getAttachments({ includeInlineImages: false }).forEach(function (a) { if (adjuntoUtil_(a)) adj.push(a.getName()); });
     });
     var hay = texto.toLowerCase();
+    var calzaRef = tk.some(function (x) { return x.t.some(function (t) { return contiene_(hay, t); }); });
+    if (!esNuestro_(texto, calzaRef)) return;   // importación propia de Netnow u otro tema: no se registra
     var cand = tk.filter(function (x) { return x.t.some(function (t) { return contiene_(hay, t); }); });
     // Si calzan varias, se prefiere la que calza por referencia (no solo por nombre).
     if (cand.length > 1) {
