@@ -179,15 +179,14 @@ function reposicion(){
   const rows=SKUS.map(calc).filter(r=>filtroLinea==='Todas'||r.linea===filtroLinea);
   const lineas=['Chimeneas','Telones','Reolink'].filter(l=>filtroLinea==='Todas'||l===filtroLinea);
   return `<section class="view">
-   <div class="head"><div><h2 style="font-size:22px;margin-top:4px">Reposición por SKU</h2>
-    <p>Demanda = promedio mensual de los últimos 6 meses, sin contar meses en cero (quiebres). Posición = stock + en camino. Sugerido = demanda de (lead time + 30 días de revisión) + stock de seguridad − posición, redondeado al mínimo de compra.</p></div>
+   <div class="head"><div><h2 style="font-size:22px;margin-top:4px">Reposición por SKU</h2></div>
     <div class="actions"><div class="seg" id="fl">${['Todas','Chimeneas','Telones','Reolink'].map(l=>`<button aria-pressed="${l===filtroLinea}" data-l="${l}">${l}</button>`).join('')}</div></div></div>
    <div class="panel"><div class="tbl-wrap"><table>
     <thead><tr><th>Estado</th><th>Producto</th><th class="r">Stock</th><th class="r">En camino</th><th class="r">Venta/mes</th><th>12 meses</th><th class="r">Cobertura</th><th class="r">P. reorden</th><th>Posición vs reorden</th><th class="r">Sugerido</th><th class="r">Pedir antes de</th><th class="r">Costo 2ebox</th></tr></thead>
     <tbody>${lineas.map(l=>{
       const p=P[l];
       const rs=rows.filter(r=>r.linea===l).sort((a,b)=>ORD[a.estado]-ORD[b.estado]);
-      return `<tr class="grp"><td colspan="12">${l} · LT ${p.lt} d · seguridad ${p.ss} d · margen Netnow ${p.margen}% · ${p.via}</td></tr>`+rs.map(r=>`<tr class="click" data-sku="${r.sku}">
+      return rs.map(r=>`<tr class="click" data-sku="${r.sku}">
         <td>${chip(r.estado)}</td>
         <td><div class="prod"><span>${r.nombre}</span><small class="mono">${r.sku}</small></div></td>
         <td class="r">${fmtN(r.stock)}</td>
