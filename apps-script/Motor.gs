@@ -248,16 +248,19 @@ function log_(ss, accion, imp, detalle) {
 }
 
 /* ================= Reporte mensual a gerencia =================
- * Se envía solo el PRIMER JUEVES de cada mes: el disparador corre todos los jueves a las 8:00
- * y revisa si es el primero del mes. Destinatarios: BD_Config → reporte_destinatarios (separados por coma).
+ * Se envía solo el PRIMER JUEVES de cada mes, ~10:00 hora de Chile (la reunión de gerencia es a las 11:00):
+ * el disparador corre todos los jueves entre 9:45 y 10:15 y revisa si es el primero del mes.
+ * Destinatarios: BD_Config → reporte_destinatarios (separados por coma); si no existe, se usan los de abajo.
+ * Importante: la zona horaria del proyecto debe ser America/Santiago (Configuración del proyecto).
  *   instalarReporte()  → ejecutar UNA vez para crear el disparador.
  *   probarReporte()    → envía el reporte de hoy solo a tu correo, para revisarlo.
  */
 var APP_URL = 'https://jtunon-dev.github.io/importaciones/';
+var DESTINATARIOS = 'jtunon@netnow.cl,francisco.decastro@netnow.cl,francisco.plaza@2ebox.com,andres.diaz@retail.cl';
 
 function instalarReporte() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'reporteMensual') ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('reporteMensual').timeBased().onWeekDay(ScriptApp.WeekDay.THURSDAY).atHour(8).create();
+  ScriptApp.newTrigger('reporteMensual').timeBased().onWeekDay(ScriptApp.WeekDay.THURSDAY).atHour(10).nearMinute(0).inTimezone('America/Santiago').create();
 }
 
 function reporteMensual(e) {
@@ -265,7 +268,7 @@ function reporteMensual(e) {
   var forzar = e === true;
   if (!forzar && hoy.getDate() > 7) return; // solo el primer jueves del mes
   var ss = SpreadsheetApp.getActive(), cfg = leerConfig_(ss);
-  var para = String(cfg.reporte_destinatarios || '').trim();
+  var para = String(cfg.reporte_destinatarios || DESTINATARIOS).trim();
   if (!para) throw new Error('Falta reporte_destinatarios en BD_Config');
   var r = armarReporte_(ss, cfg, hoy);
   GmailApp.sendEmail(para, r.asunto, r.texto, { htmlBody: r.html, name: 'Importaciones retail.cl' });
