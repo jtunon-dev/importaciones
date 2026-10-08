@@ -315,13 +315,36 @@ function armarReporte_(ss, cfg, hoy) {
       '</td><td align="right">' + (p.moneda === 'USD' ? 'US$ ' + Number(p.monto).toLocaleString('es-CL') : clp(p.monto)) + '</td></tr>';
   }).join('');
 
-  // Stock: valor del inventario y SKU sin stock que sí venden
+  // Stock y reposición: misma lógica que la vista Reposición de la app
   var valor = stock.reduce(function (s, x) { return s + (Number(x.valor_clp) || 0); }, 0);
-  var quiebres = stock.filter(function (x) {
-    if (String(x.descontinuado).indexOf('S') === 0 || Number(x.stock) > 0) return false;
-    var v = 0; for (var i = 1; i <= 12; i++) v += Number(x['v' + (i < 10 ? '0' : '') + i]) || 0;
-    return v > 0;
-  }).map(function (x) { return x.nombre + ' (' + x.sku + ')'; });
+  var sup = {}; try { sup = JSON.parse(cfg.supuestos_json || '{}'); } catch (err) {}
+  var prods = leerTabla_(ss, 'BD_Productos').filas, transito = {};
+  imps.filter(function (e) { return e.estado === 'En producción' || e.estado === 'En tránsito'; }).forEach(function (e) {
+    var eta = e.bodega || e.bodega_est || e.eta_est || e.eta; if (!eta) return;
+    prods.filter(function (p) { return String(p.id) === String(e.id); }).forEach(function (p) {
+      var t = transito[p.sku] = transito[p.sku] || { q: 0, eta: eta }; t.q += Number(p.unidades) || 0; if (eta < t.eta) t.eta = eta;
+    });
+  });
+  var dias = function (a, b) { return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 864e5); };
+  var alertas = [];
+  stock.forEach(function (x) {
+    if (String(x.descontinuado).indexOf('S') === 0 || String(x.nuevo).indexOf('S') === 0) return;
+    var p = sup[x.linea] || { lt: 90, ss: 21, rev: 30, moq: 1, est: 1 };
+    var v = []; for (var i = 1; i <= 12; i++) v.push(Number(x['v' + (i < 10 ? '0' : '') + i]) || 0);
+    var con = v.slice(-6).filter(function (n) { return n > 0; });
+    var prom = (con.length ? con.reduce(function (a, b) { return a + b; }, 0) / con.length : 0) * (p.est || 1);
+    if (!prom) return;
+    var diaria = prom / 30, st = Number(x.stock) || 0, tr = transito[x.sku] || { q: 0, eta: null };
+    var rop = diaria * (p.lt + p.ss), pos = st + tr.q, target = diaria * (p.lt + p.rev) + diaria * p.ss;
+    var sug = Math.ceil(Math.max(0, target - pos) / (p.moq || 1)) * (p.moq || 1);
+    var sit = null, grupo = null;
+    if (st === 0 && !tr.q) { sit = 'Sin stock ni carga en camino'; grupo = 1; }
+    else if (st === 0) { sit = 'Sin stock · llegan ' + tr.q + ' u el ' + fecha(tr.eta); grupo = 1; }
+    else if (tr.q && tr.eta && st < diaria * dias(hoyS, tr.eta)) { sit = 'Se agota ~' + fecha(f(new Date(hoy.getTime() + st / diaria * 864e5))) + ', antes de la llegada (' + fecha(tr.eta) + ')'; grupo = 2; }
+    else if (pos < rop) { sit = 'Bajo el punto de reorden: pedir ahora'; grupo = 2; }
+    if (grupo) alertas.push({ x: x, sit: sit, grupo: grupo, prom: prom, tr: tr.q, sug: grupo === 2 || !tr.q ? sug : 0 });
+  });
+  alertas.sort(function (a, b) { return a.grupo - b.grupo || b.prom - a.prom; });
 
   var mes = Utilities.formatDate(hoy, tz, 'MMMM yyyy');
   var asunto = 'Importaciones retail.cl · reporte ' + mes;
@@ -371,10 +394,14 @@ function armarReporte_(ss, cfg, hoy) {
       kpi('Pagado ' + y, clp(pagY), 'vs ' + ya + ' a la fecha: ' + yoy)]) +
     '<div style="font-size:16px;font-weight:bold;margin:18px 0 8px">Importaciones en curso</div>' + tabla(['Importación', 'Estado', 'Proveedor', 'Unidades', 'FOB', 'ETA bodega'], [3, 4], filasImp, 'No hay importaciones en curso.', [2, 3]) +
     '<div style="font-size:16px;font-weight:bold;margin:18px 0 8px">Pagos de los próximos 30 días</div>' + tabla(['Fecha', 'Importación', 'Concepto', 'Monto'], [3], filasPag, 'Sin pagos en los próximos 30 días.') +
-    '<div style="font-size:16px;font-weight:bold;margin:18px 0 8px">Stock</div>' +
-    '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:' + BORDE + ';font-size:13px">' +
-    '<tr>' + td('Inventario valorizado') + td('<b>' + clp(valor) + '</b> <span style="color:#8A86A6">(corte Defontana ' + fecha(cfg.stock_fecha) + ')</span>') + '</tr>' +
-    '<tr>' + td('Sin stock y con venta') + td(quiebres.length ? '<b>' + quiebres.join('<br>') + '</b>' : 'Sin quiebres de stock') + '</tr></table>' +
+    '<div style="font-size:16px;font-weight:bold;margin:18px 0 4px">Stock y reposición</div>' +
+    '<div style="font-size:13px;color:#4F4A70;margin:0 0 8px">Inventario valorizado: <b style="color:' + NAVY + '">' + clp(valor) + '</b> (corte Defontana ' + fecha(cfg.stock_fecha) + ')</div>' +
+    tabla(['Producto', 'Situación', 'Stock', 'Venta/mes', 'Sugerido'], [2, 3, 4], alertas.map(function (a) {
+      var chip = a.grupo === 1 ? ['#FBE1E5', '#C9334B', 'Sin stock'] : ['#FCEFD6', '#B9740B', 'Urgente'];
+      return '<tr>' + td('<b>' + a.x.nombre + '</b><br><span style="color:#8A86A6;font-size:12px">' + a.x.sku + '</span>') +
+        td('<span style="background-color:' + chip[0] + ';color:' + chip[1] + ';font-weight:bold;font-size:11px;padding:2px 8px;border-radius:9px;white-space:nowrap">' + chip[2] + '</span><br><span style="font-size:12px">' + a.sit + '</span>') +
+        td(String(Number(a.x.stock) || 0), true) + td(a.prom.toFixed(1).replace('.', ','), true, '', true) + td(a.sug ? a.sug + ' u' : '—', true) + '</tr>';
+    }).join(''), 'Sin productos sin stock ni con urgencia de reposición.', [3]) +
     '<div style="font-size:11px;color:#8A86A6;margin-top:16px">Montos en USD sin T/C registrado se valorizan a ' + tc + '. Para entrar a la app usa tu cuenta de Google de la empresa: ' + APP_URL + '</div>' +
     '</td></tr></table></td></tr></table>';
   var texto = asunto + '\n\nEn curso: ' + curso.length + ' importaciones. Por pagar 30 días: ' + clp(suma(p30)) + '. Por pagar 90 días: ' + clp(suma(p90)) +
