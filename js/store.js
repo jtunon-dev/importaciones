@@ -269,10 +269,35 @@ const Store = (() => {
     log('Inicializar base', '', 'Pestañas BD creadas');
   }
 
+  // Aplica un archivo de actualización: {fecha, stock:{fecha, meses, filas}, pagos:[{importacion, pago_id, fecha?, fuente?, est?, concepto?, tc?}]}
+  async function aplicarActualizacion(act) {
+    if (!EDITOR) throw new Error('Tu cuenta tiene acceso de solo lectura');
+    const hecho = [];
+    if (act.stock && act.stock.filas && act.stock.filas.length) {
+      if (!Object.keys(SHEET_IDS).length) await idsHojas();
+      const r = await G.leer(['BD_Stock!A:A']); const n = (r.valueRanges[0].values || []).length;
+      if (n > 1) await G.lote([{ deleteDimension: { range: { sheetId: SHEET_IDS.BD_Stock, dimension: 'ROWS', startIndex: 1, endIndex: n } } }]);
+      await G.agregar('BD_Stock!A1', act.stock.filas.map(f => aHeader('BD_Stock', f)));
+      await guardarConfig({ stock_fecha: act.stock.fecha, meses_stock: act.stock.meses.join(',') });
+      hecho.push(`stock de ${act.stock.filas.length} SKU al ${act.stock.fecha}`);
+    }
+    const imps = new Set();
+    (act.pagos || []).forEach(u => {
+      const l = PAGOS[u.importacion] || []; const p = l.find(x => x[8] === u.pago_id); if (!p) return;
+      if (u.fecha) p[0] = u.fecha; if (u.concepto) p[2] = u.concepto; if (u.tc !== undefined) p[5] = u.tc;
+      if (u.fuente) p[6] = u.fuente; if (u.est !== undefined) p[7] = u.est; if (u.respaldo) p[9] = u.respaldo;
+      imps.add(u.importacion);
+    });
+    for (const id of imps) await guardarImportacion(id, 'Actualización de pagos');
+    if (imps.size) hecho.push(`pagos de ${[...imps].join(', ')}`);
+    log('Cargar actualización', '', hecho.join(' · '));
+    return hecho.length ? 'Actualizado: ' + hecho.join(' · ') : 'El archivo no traía cambios';
+  }
+
   async function borrarImportacion(id) {
     await reemplazar(id, { BD_Importaciones: [], BD_Costeo: [], BD_Productos: [], BD_Pagos: [] });
     log('Borrar importación', id, '');
   }
 
-  return { borrarImportacion, cargar, construir, guardarImportacion, guardarConfig, asignarCorreo, faltantes, inicializar, log, filaImportacion, filasCosteo, filasProductos, filasPagos, objetos };
+  return { aplicarActualizacion, borrarImportacion, cargar, construir, guardarImportacion, guardarConfig, asignarCorreo, faltantes, inicializar, log, filaImportacion, filasCosteo, filasProductos, filasPagos, objetos };
 })();

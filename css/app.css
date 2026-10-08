@@ -297,3 +297,12 @@ td input.fin[data-num]{text-align:right}
   --bad:#FF7088;--bad-bg:#43182A;--info:#86A3FF;--info-bg:#1D2A55;--muted-bg:#231D49;--field:#221C4C;
   color:var(--ink);box-shadow:0 4px 16px rgba(20,14,64,.18)}
 button.kpi{color:var(--ink)}
+
+/* Reposición: compacta para que entre completa en Full HD con zoom de Windows (1280–1536 px) */
+table.repo th,table.repo td{padding:10px 6px}
+table.repo th{white-space:normal;line-height:1.2;vertical-align:bottom}
+table.repo th:first-child,table.repo td:first-child{padding-left:12px}
+table.repo td:nth-child(2){white-space:normal;min-width:170px}
+table.repo .chip{font-size:12px;padding:3px 9px;white-space:normal;line-height:1.25;max-width:112px}
+table.repo .bar{width:84px;min-width:84px}
+table.repo td:nth-child(2){min-width:160px}

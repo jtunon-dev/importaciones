@@ -181,7 +181,7 @@ function reposicion(){
   return `<section class="view">
    <div class="head"><div><h2 style="font-size:22px;margin-top:4px">Reposición por SKU</h2></div>
     <div class="actions"><div class="seg" id="fl">${['Todas','Chimeneas','Telones','Reolink'].map(l=>`<button aria-pressed="${l===filtroLinea}" data-l="${l}">${l}</button>`).join('')}</div></div></div>
-   <div class="panel"><div class="tbl-wrap"><table>
+   <div class="panel"><div class="tbl-wrap"><table class="repo">
     <thead><tr><th>Estado</th><th>Producto</th><th class="r">Stock</th><th class="r">En camino</th><th class="r">Venta/mes</th><th>12 meses</th><th class="r">Cobertura</th><th class="r">P. reorden</th><th>Posición vs reorden</th><th class="r">Sugerido</th><th class="r">Pedir antes de</th><th class="r">Costo 2ebox</th></tr></thead>
     <tbody>${lineas.map(l=>{
       const p=P[l];
@@ -205,7 +205,7 @@ function reposicion(){
 }
 function spark(r){
   if(!r.ventas) return '<span class="hint">sin historial</span>';
-  const max=Math.max(...r.ventas,1), W=96, H=26, bw=W/12;
+  const max=Math.max(...r.ventas,1), W=84, H=24, bw=W/12;
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-label="ventas 12 meses">${r.ventas.map((v,i)=>{const h=Math.max(v/max*(H-2),v?2:1);return `<rect x="${i*bw+1}" y="${H-h}" width="${bw-2}" height="${h}" rx="1" fill="${v?'var(--violet)':'var(--line)'}" opacity="${i>=6?1:.45}"></rect>`}).join('')}</svg>`;
 }
 function posBar(r){
@@ -463,6 +463,7 @@ function carga(){
       <div class="src"><span class="ic">DR</span><div><b>Carpetas de importación (Drive)</b><small>El motor revisa PI, invoice, packing list, BL, DIN, Swift y set de Grace cada 15 min</small></div><span class="chip ${faltanSets().length?'s-comprar':'s-ok'}">${faltanSets().length} sin set</span></div>
       <div class="src"><span class="ic">@</span><div><b>Gmail (órdenes, pagos, DIN)</b><small>El motor guarda los adjuntos en la carpeta de cada importación</small></div><span class="chip ${CORREOS.some(c=>c.estado==='por asignar')?'s-comprar':'s-ok'}">${CORREOS.filter(c=>c.estado==='por asignar').length} por asignar</span></div>
       <div class="src"><span class="ic">DF</span><div><b>Defontana · 2EBOX SPA</b><small>Stock y ventas por SKU (pestaña BD_Stock)</small></div><span class="chip s-ok">${CFG.stock_fecha?fmtD(CFG.stock_fecha):'—'}</span></div>
+      ${EDITOR?`<label class="btn soft" style="justify-self:start;font-size:12.5px;padding:6px 12px;cursor:pointer">Cargar actualización (.json)<input type="file" id="carga-act" accept=".json" hidden></label><span class="hint">Archivo generado desde Defontana y los correos (stock, ventas y pagos confirmados)</span>`:''}
      </div>
      <div class="panel"><header><h3>Pendientes de validación</h3></header><div class="alerts" style="font-size:12.5px">
       ${pendientesValidacion().map(t=>`<div class="note">${t}</div>`).join('')||'<div class="note">Sin pendientes.</div>'}
@@ -514,6 +515,9 @@ function fSup(){
   <div style="display:flex"><button class="btn primary" style="margin-left:auto" type="submit">Aplicar y recalcular</button></div></form>`;
 }
 function bindCarga(){
+  const ca=$('#carga-act'); if(ca) ca.onchange=()=>{const fr=new FileReader();fr.onload=async()=>{
+    try{const act=JSON.parse(fr.result);estadoGuardado('guardando');const r=await Store.aplicarActualizacion(act);await Store.cargar();estadoGuardado('ok');toast(r);render()}
+    catch(err){estadoGuardado('error',err.message)}};fr.readAsText(ca.files[0])};
   document.querySelectorAll('#fs button').forEach(b=>b.onclick=()=>{formSel=b.dataset.f;render()});
   const cp=$('#carga-pi'); if(cp) cp.onclick=()=>{piDestino=null;piDrawer()};
   const cn=$('#carga-nueva'); if(cn) cn.onclick=nuevaFicha;
