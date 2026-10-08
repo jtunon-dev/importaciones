@@ -1,12 +1,13 @@
 /* Layout: shell estilo panel logístico — sidebar navy de íconos a la izquierda, contenido claro con tarjetas blancas de sombra suave */
 :root{
-  --bg:#F3F4FB; --surface:#FFFFFF; --surface-2:#F6F5FD; --line:#E9E7F5;
+  /* Modo claro de marca: fondo gris lavanda (navy + blanco), superficies marfil-lila, sin blanco puro */
+  --bg:#E7E8EF; --surface:#F6F6FA; --surface-2:#EEEDF5; --line:#DCD9E8; --field:#FCFCFE;
   --ink:#1B1640; --ink-2:#4F4A70; --ink-3:#8A86A6;
-  --violet:#6D49F2; --violet-soft:#EFEBFF; --cyan:#05C8C8; --navy:#231D4C; --link:#5B3BE8;
+  --violet:#6D49F2; --violet-soft:#E6E0FB; --cyan:#05C8C8; --navy:#231D4C; --link:#5B3BE8;
   --shadow:0 2px 12px rgba(35,29,76,.06); --c-local:#231D4C; --c-imp:#E0861A; --c-bod:#D8457A;
   --ok:#1E9566; --ok-bg:#DFF3EA; --warn:#B9740B; --warn-bg:#FCEFD6;
   --bad:#C9334B; --bad-bg:#FBE1E5; --info:#3E63D8; --info-bg:#E2E9FC;
-  --muted-bg:#ECEAF3;
+  --muted-bg:#E3E1EE;
   --f-ui:"Lexend","Poppins",system-ui,sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
   --r:16px;
@@ -233,7 +234,7 @@ table tr.tot td{font-weight:600}
 form{display:grid;gap:12px}
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px}
 label{display:grid;gap:4px;font-size:12.5px;color:var(--ink-2);font-weight:500}
-input,select,textarea{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+input,select,textarea{border:1px solid var(--line);background:var(--field,var(--surface));border-radius:8px;padding:8px 10px;width:100%;min-width:0}
 input:focus,select:focus{border-color:var(--violet);outline:none;box-shadow:0 0 0 3px var(--violet-soft)}
 .hint{font-size:11.5px;color:var(--ink-3);font-weight:400}
 .err{font-size:12px;color:var(--bad)}
@@ -289,3 +290,10 @@ input.ro:focus{border-color:var(--line);box-shadow:none}
 @media (max-width:700px){.ficha-top{grid-template-columns:1fr}.ficha-top .fields.f-datos,.ficha-top .fields.f-tc{grid-template-columns:1fr}}
 
 td input.fin[data-num]{text-align:right}
+
+/* Tarjetas iniciales de cada sección (KPI): se mantienen en la paleta oscura de marca */
+.kpi{--surface:#1B1640;--surface-2:#221C4C;--line:#2E2860;--ink:#EEEBFB;--ink-2:#B9B3DA;--ink-3:#8780AE;
+  --violet:#9478FF;--violet-soft:#2A2160;--cyan:#3EE6E6;--link:#A994FF;--ok:#4CC995;--ok-bg:#163A2E;--warn:#F0B44C;--warn-bg:#3D2E12;
+  --bad:#FF7088;--bad-bg:#43182A;--info:#86A3FF;--info-bg:#1D2A55;--muted-bg:#231D49;--field:#221C4C;
+  color:var(--ink);box-shadow:0 4px 16px rgba(20,14,64,.18)}
+button.kpi{color:var(--ink)}
