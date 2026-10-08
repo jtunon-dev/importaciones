@@ -286,7 +286,7 @@ function importaciones(){
      <p class="hint" style="margin:10px 0 0">Tiempo total = orden → fecha en CD. Tránsito = ETD → fecha en CD. "~" = fecha estimada. ETA inicial = primera fecha informada por el forwarder (se carga desde Klog).</p>
     </div>
    </div>
-   <div class="grid-2" id="factores">
+   <div class="grid-factores" id="factores">
     <div class="panel"><header><h3>Factores de importación</h3><span class="sub">Todas las importaciones y cotizaciones · pestañas de costeo del Sheets</span></header>${factorTable()}</div>
     <div class="panel"><header><h3>Evolución del factor</h3><div class="seg" id="fm" style="margin-left:auto">${[['linea','Tipo de producto'],['prov','Proveedor']].map(([k,l])=>`<button aria-pressed="${factorModo===k}" data-fm="${k}">${l}</button>`).join('')}</div></header>${factorChart()}</div>
    </div>
@@ -738,7 +738,7 @@ function factorTable(){
       return `<tr><td><b>${f.id}</b><div class="hint">${fmtD(f.fecha)}</div></td><td class="lnk" style="font-size:12.5px">${f.prov}</td>
       <td class="r">${f.proy?fmtN(f.proy,3):'—'}</td><td class="r"><b>${f.real?fmtN(f.real,3):'—'}</b></td>
       <td class="r" style="color:${dv==null?'var(--ink-3)':Math.abs(dv)>.05?'var(--bad)':dv<0?'var(--ok)':'var(--warn)'}">${dv==null?'—':(dv>0?'+':'')+fmtN(dv*100,1)+'%'}</td>
-      <td style="white-space:normal;min-width:160px"><span class="chip ${FQ[f.q][1]}">${FQ[f.q][0]}</span>${f.nota?`<div class="hint" style="margin-top:3px">${f.nota}</div>`:''}</td></tr>`}).join('')}
+      <td style="white-space:normal;min-width:120px"><span class="chip ${FQ[f.q][1]}">${FQ[f.q][0]}</span>${f.nota?`<div class="hint" style="margin-top:3px">${f.nota}</div>`:''}</td></tr>`}).join('')}
   </tbody></table></div><p class="hint" style="margin:8px 0 0">Factor = (CIF + gastos de importación) ÷ FOB, sin IVA. Desvío mayor a ±5% en rojo para revisar el costeo.</p>`;
 }
 let factorModo='linea';
@@ -1014,7 +1014,7 @@ function nuevaFicha(){
 }
 const n2=v=>v==null||v===''?'':fmtN(v,2), n0=v=>v==null||v===''?'':Math.round(v).toLocaleString('es-CL');
 // Formato chileno en todos los números de la ficha: USD y T/C con 2 decimales, CLP y unidades sin decimales.
-const decDe=p=>/^tc(Hoy|Aduana|Proy|Real)$|\.(flete|seguro)\.0$|^items\.\d+\.p$|^ajuste$|^anticipoMonto$/.test(p)?2
+const decDe=p=>/^realusd\.|^tc(Hoy|Aduana|Proy|Real)$|\.(flete|seguro)\.0$|^items\.\d+\.p$|^ajuste$|^anticipoMonto$/.test(p)?2
   :/^(anticipo|margenNN)$|\.com$/.test(p)?-2:0;
 const fmtIn=(v,d)=>v==null||v===''||!isFinite(v)?'':Number(v).toLocaleString('es-CL',d===-2?{maximumFractionDigits:2}:{minimumFractionDigits:d,maximumFractionDigits:d});
 function parseNum(t){
@@ -1051,9 +1051,9 @@ function fichaView(){
   // 2 productos
   const fobItems=P_.fobU-(+f.ajuste||0), tcPj=tcProyeccion(f);
   const s2=`<div class="panel"><header><h3><span class="stepn">4</span>Mix de productos y proyección</h3><span class="sub">Precios ${f.incoterm} · costo con factor proyectado ${P_.factor?fmtN(P_.factor,3):'—'} · T/C ${fmtN(tcPj,2)}</span><button class="btn soft" id="f-pi" style="margin-left:auto;font-size:12.5px;padding:6px 12px">Cargar desde PI</button></header>
-    <div class="tbl-wrap"><table><thead><tr><th>SKU</th><th>Producto</th><th class="r">Unidades</th><th class="r">Precio unit. USD</th><th class="r">Total USD</th><th class="r">% peso</th><th class="r">Valor en CHL (USD/u)</th><th class="r">Costo CLP neto</th><th class="r">Costo total CLP</th><th></th></tr></thead><tbody>
+    <div class="tbl-wrap"><table class="mix"><thead><tr><th>SKU</th><th>Producto</th><th class="r">Unidades</th><th class="r">Precio unit. USD</th><th class="r">Total USD</th><th class="r">% peso</th><th class="r">Valor en CHL (USD/u)</th><th class="r">Costo CLP neto</th><th class="r">Costo total CLP</th><th></th></tr></thead><tbody>
     ${f.items.map((it,i)=>{const ft=(+it.q||0)*(+it.p||0), vu=(+it.p||0)*(P_.factor||0), cc=vu*tcPj;
-      return `<tr><td>${inp(`items.${i}.sku`,it.sku,{type:'text',cls:'mono',w:'120px'})}</td><td>${inp(`items.${i}.nombre`,it.nombre,{type:'text',w:'200px'})}</td><td class="r">${inp(`items.${i}.q`,it.q,{w:'80px'})}</td><td class="r">${inp(`items.${i}.p`,it.p,{w:'100px'})}</td>
+      return `<tr><td>${inp(`items.${i}.sku`,it.sku,{type:'text',cls:'mono',w:'104px'})}</td><td>${inp(`items.${i}.nombre`,it.nombre,{type:'text',w:'170px'})}</td><td class="r">${inp(`items.${i}.q`,it.q,{w:'64px'})}</td><td class="r">${inp(`items.${i}.p`,it.p,{w:'84px'})}</td>
       <td class="r">${n2(ft)}</td><td class="r">${fobItems?fmtN(ft/fobItems*100,0)+'%':'—'}</td><td class="r">${P_.factor?n2(vu):'—'}</td><td class="r"><b>${P_.factor?fmtCLP(cc):'—'}</b></td><td class="r">${P_.factor?fmtCLP(cc*(+it.q||0)):'—'}</td><td><button class="icbtn" data-del="${i}" title="Quitar">✕</button></td></tr>`}).join('')}
     <tr><td colspan="4" style="color:var(--ink-2)">Ajustes de la PI (descuentos, cargos bancarios, apoyo flete)</td><td class="r">${inp('ajuste',f.ajuste,{w:'100px'})}</td><td colspan="5"></td></tr>
     <tr class="tot"><td colspan="2"><button class="lnk" id="f-add" style="background:none;border:0;cursor:pointer">+ Agregar producto</button></td><td class="r"><b>${fmtN(f.items.reduce((s,i)=>s+(+i.q||0),0))}</b></td><td></td><td class="r"><b>${n2(P_.fobU)}</b></td><td></td><td></td><td></td><td class="r"><b>${P_.factor?fmtCLP(f.items.reduce((s,it)=>s+(+it.p||0)*P_.factor*tcPj*(+it.q||0),0)):'—'}</b></td><td></td></tr>
@@ -1090,8 +1090,8 @@ function fichaView(){
      ${row('Flete',inp('proj.flete.0',P_.fl?.[0],{w:'90px'}),inp('proj.flete.1',P_.fl?.[1],{w:'110px'}),inp('real.flete.0',R.fl?.[0],{w:'90px'}),inp('real.flete.1',R.fl?.[1],{w:'110px'}))}
      ${row('Seguro',inp('proj.seguro.0',P_.sg?.[0],{w:'90px'}),inp('proj.seguro.1',P_.sg?.[1],{w:'110px'}),inp('real.seguro.0',R.sg?.[0],{w:'90px'}),inp('real.seguro.1',R.sg?.[1],{w:'110px'}))}
      ${row('<b>CIF</b>',`<b>${n2(P_.cifU)}</b>`,`<b>${n0(P_.cifC)}</b>`,`<b>${n2(R.cifU)}</b>`,`<b>${R.fobC!=null?n0(R.cifC):'—'}</b>`,{cls:'hl'})}
-     ${row('IVA (19%)',n2(P_.ivaU),n0(P_.ivaC),n2(R.ivaC!=null?R.ivaC/f.tcAduana:null),inp('real.ivaClp',R.ivaC,{ph:'DIN',w:'110px'}),{tag:'crédito fiscal'})}
-     ${GASTOS.map(([k,l])=>row(l,n2((+f.proj.g[k]||0)/P_.tcG),inp(`proj.g.${k}`,f.proj.g[k],{w:'110px'}),n2(f.real.g[k]!=null?f.real.g[k]/R.tcG:null),inp(`real.g.${k}`,f.real.g[k],{w:'110px',ph:'pendiente'}))).join('')}
+     ${row('IVA (19%)',n2(P_.ivaU),n0(P_.ivaC),inp('realusd.ivaClp',R.ivaC!=null?Math.round(R.ivaC/f.tcAduana*100)/100:null,{ph:'USD',w:'100px'}),inp('real.ivaClp',R.ivaC,{ph:'DIN',w:'110px'}),{tag:'crédito fiscal'})}
+     ${GASTOS.map(([k,l])=>row(l,n2((+f.proj.g[k]||0)/P_.tcG),inp(`proj.g.${k}`,f.proj.g[k],{w:'110px'}),inp(`realusd.g.${k}`,f.real.g[k]!=null?Math.round(f.real.g[k]/R.tcG*100)/100:null,{w:'100px',ph:'USD'}),inp(`real.g.${k}`,f.real.g[k],{w:'110px',ph:'pendiente'}))).join('')}
      ${row('<b>TOTAL GASTOS IMPORTACIÓN</b>',`<b>${n2(P_.gC/P_.tcG)}</b>`,`<b>${n0(P_.gC)}</b>`,`<b>${n2(R.gC/R.tcG)}</b>`,`<b>${n0(R.gC)}</b>`,{cls:'hl'})}
      ${row('IVA gastos',n2(P_.ivaG/P_.tcG),n0(P_.ivaG),n2(R.ivaG/R.tcG),n0(R.ivaG))}
      ${row('TOTAL IMPORTACIÓN',n2(P_.totU),n0(P_.totC),n2(R.totU),realOk?n0(R.totC):v(null),{cls:'tot'})}
@@ -1122,12 +1122,12 @@ function fichaView(){
      <label style="max-width:150px">Comisión ${PORTALES.find(x=>x[0]===pk)[1]} (%)${inp(`portales.${pk}.com`,pp.com)}</label>
      <label style="max-width:150px">Envío por defecto (CLP)${inp(`portales.${pk}.envio`,pp.envio)}</label>
     </div>
-    <div class="tbl-wrap"><table><thead><tr><th>Modelo</th><th class="r">Costo directo neto</th><th class="r">MG Netnow</th><th class="r">Costo NN</th><th class="r">Precio venta</th><th class="r">Precio neto</th><th class="r">MG directo</th><th class="r">Comisión</th><th class="r">Envío</th><th class="r">Venta neta</th><th class="r">MG retail</th><th class="r">MG tras envío</th><th class="r">Utilidad (${'todas las u.'})</th></tr></thead><tbody>
-    ${filas.map(x=>`<tr><td><b class="mono">${x.it.sku}</b><div class="hint">${x.it.nombre||''}</div></td><td class="r">${fmtCLP(x.cd)}</td><td class="r">${nn}%</td><td class="r">${fmtCLP(x.cnn)}</td>
-      <td class="r">${inp(`precios.${x.it.sku}.${pk}`,x.pv,{w:'110px',ph:'precio'})}</td><td class="r">${x.neto?fmtCLP(x.neto):'—'}</td><td class="r">${x.mgd!=null?fmtN(x.mgd*100,1)+'%':'—'}</td>
-      <td class="r">${x.com!=null?fmtCLP(x.com):'—'}</td><td class="r">${inp(`envio.${x.it.sku}.${pk}`,x.env,{w:'90px'})}</td><td class="r">${x.vn!=null?fmtCLP(x.vn):'—'}</td>
+    <div class="tbl-wrap"><table class="ventas"><thead><tr><th>Modelo</th><th class="r">Costo directo neto</th><th class="r">Costo NN (${nn}%)</th><th class="r">Precio venta</th><th class="r">Precio neto</th><th class="r">MG directo</th><th class="r">Comisión</th><th class="r">Envío</th><th class="r">Venta neta</th><th class="r">MG retail</th><th class="r">MG tras envío</th><th class="r">Utilidad (${'todas las u.'})</th></tr></thead><tbody>
+    ${filas.map(x=>`<tr><td><b class="mono">${x.it.sku}</b><div class="hint">${x.it.nombre||''}</div></td><td class="r">${fmtCLP(x.cd)}</td><td class="r">${fmtCLP(x.cnn)}</td>
+      <td class="r">${inp(`precios.${x.it.sku}.${pk}`,x.pv,{w:'96px',ph:'precio'})}</td><td class="r">${x.neto?fmtCLP(x.neto):'—'}</td><td class="r">${x.mgd!=null?fmtN(x.mgd*100,1)+'%':'—'}</td>
+      <td class="r">${x.com!=null?fmtCLP(x.com):'—'}</td><td class="r">${inp(`envio.${x.it.sku}.${pk}`,x.env,{w:'76px'})}</td><td class="r">${x.vn!=null?fmtCLP(x.vn):'—'}</td>
       <td class="r" style="color:${x.mg==null?'':x.mg<0.15?'var(--bad)':x.mg<0.3?'var(--warn)':'var(--ok)'}"><b>${x.mg!=null?fmtN(x.mg*100,1)+'%':'—'}</b></td><td class="r">${x.mge!=null?fmtN(x.mge*100,1)+'%':'—'}</td><td class="r">${x.ut!=null?fmtCLP(x.ut):'—'}</td></tr>`).join('')}
-    <tr class="tot"><td colspan="9">Si toda la importación se vende en ${PORTALES.find(x=>x[0]===pk)[1]}</td><td class="r">${fmtCLP(tv)}</td><td class="r">${tv?fmtN((tu)/tv*100,1)+'%':''}</td><td></td><td class="r"><b>${fmtCLP(tu)}</b></td></tr>
+    <tr class="tot"><td colspan="8">Si toda la importación se vende en ${PORTALES.find(x=>x[0]===pk)[1]}</td><td class="r">${fmtCLP(tv)}</td><td class="r">${tv?fmtN((tu)/tv*100,1)+'%':''}</td><td></td><td class="r"><b>${fmtCLP(tu)}</b></td></tr>
     </tbody></table></div>
     <div class="kv" style="margin-top:12px">${resumenPortales.map(r=>`<div><span>${r.l}</span><b>${r.m!=null?fmtN(r.m*100,1)+'% margen':'sin precios'}</b><span>${fmtCLP(r.u)} utilidad</span></div>`).join('')}</div>
     <p class="hint" style="margin:8px 0 0">Comisiones Retail.cl (pasarela) 3,5% y Walmart 12% son supuestos editables; Mercado Libre 17% y Falabella 12% vienen de tu Sheets. MG retail = (venta neta − costo NN) ÷ venta neta.</p></div>`;
@@ -1150,6 +1150,7 @@ function bindFicha(){
   const keep=fn=>{const y=window.scrollY;fn();render();window.scrollTo(0,y)};
   document.querySelectorAll('.fin').forEach(el=>el.onchange=()=>keep(()=>{
     const p=el.dataset.p, raw=el.value, num=el.dataset.num!=null?parseNum(raw):el.type==='number'?(raw===''?null:+raw):raw;
+    if(p.startsWith('realusd.')){const dest=p.replace('realusd.','real.');setPath(f,dest,num==null?null:Math.round(num*f.tcAduana));if(!fichaNueva&&EMB.some(e=>e.id===f.id)) guardarLuego(f.id);return}
     if(p==='base'&&!raw){const nf=normFicha('__nueva',fichaVacia());Object.assign(nf,{id:f.id,ref:f.ref});FICHA.__nueva=nf;return}
     if(p==='base'){const b=fichaDe(raw);const nf=JSON.parse(JSON.stringify(b));Object.assign(nf,{id:f.id,ref:f.ref,base:raw,tcHoy:TC,tcHoyFecha:HOY_S,tcProy:b.tcProy||TC,tcReal:null,real:{fobClp:null,flete:null,seguro:null,ivaClp:null,g:G0()}});FICHA.__nueva=nf;return}
     setPath(f,p,num);

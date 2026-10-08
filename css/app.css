@@ -306,3 +306,23 @@ table.repo td:nth-child(2){white-space:normal;min-width:170px}
 table.repo .chip{font-size:12px;padding:3px 9px;white-space:normal;line-height:1.25;max-width:112px}
 table.repo .bar{width:84px;min-width:84px}
 table.repo td:nth-child(2){min-width:160px}
+
+/* Factores: tabla más ancha que el gráfico de evolución */
+.grid-factores{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:18px}
+@media (max-width:1100px){.grid-factores{grid-template-columns:1fr}}
+.grid-factores table th,.grid-factores table td{padding:10px 8px}
+.grid-factores table th{white-space:normal}
+/* Mix de productos: compacta */
+table.mix th,table.mix td{padding:8px 6px}
+table.mix th{white-space:normal;line-height:1.2;vertical-align:bottom}
+table.mix td input.fin{padding:6px 7px}
+/* Costeo: celdas compactas para que entren USD y CLP editables */
+table.costeo td{padding:5px 8px}
+table.costeo td input.fin{padding:5px 7px}
+table.ventas th,table.ventas td{padding:8px 6px}
+table.ventas th{white-space:normal;line-height:1.2;vertical-align:bottom}
+table.ventas td input.fin{padding:5px 7px}
+table.ventas td:first-child{white-space:normal;min-width:120px}
+
+/* Lo marcado como oculto (tooltips, avisos) no se muestra aunque su clase tenga display */
+[hidden]{display:none!important}
