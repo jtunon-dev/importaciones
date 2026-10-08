@@ -293,7 +293,8 @@ function armarReporte_(ss, cfg, hoy) {
 
   // Importaciones en curso
   var curso = imps.filter(function (e) { return e.estado && e.estado !== 'Recibido'; });
-  var filasImp = curso.map(function (e) {
+  var filasImp, filasPag;
+  filasImp = curso.map(function (e) {
     var eta = e.bodega || e.bodega_est || e.eta || e.eta_est || '';
     return '<tr><td><b>' + e.id + '</b><br><span style="color:#8A86A6">' + (e.ref || '') + '</span></td><td>' + e.estado + '</td><td>' + (e.proveedor || '') +
       '</td><td align="right">' + (e.unidades || '—') + '</td><td align="right">US$ ' + Math.round(Number(e.fob_usd) || 0).toLocaleString('es-CL') +
@@ -308,7 +309,8 @@ function armarReporte_(ss, cfg, hoy) {
   var pagYa = suma(pagos.filter(function (p) { return p.fecha && String(p.fecha).slice(0, 4) === ya && String(p.fecha).slice(5) < corte; }));
   var yoyN = pagYa ? (pagY / pagYa - 1) * 100 : null;
   var yoy = yoyN == null ? '—' : (yoyN > 0 ? '+' : '') + yoyN.toFixed(1).replace('.', ',') + '%';
-  var filasPag = p30.sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; }).map(function (p) {
+  p30.sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; });
+  filasPag = p30.sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; }).map(function (p) {
     return '<tr><td>' + fecha(p.fecha) + (String(p.fecha_estimada).indexOf('S') === 0 ? ' <span style="color:#8A86A6">(est.)</span>' : '') + '</td><td>' + p.importacion + '</td><td>' + p.concepto +
       '</td><td align="right">' + (p.moneda === 'USD' ? 'US$ ' + Number(p.monto).toLocaleString('es-CL') : clp(p.monto)) + '</td></tr>';
   }).join('');
@@ -323,28 +325,51 @@ function armarReporte_(ss, cfg, hoy) {
 
   var mes = Utilities.formatDate(hoy, tz, 'MMMM yyyy');
   var asunto = 'Importaciones retail.cl · reporte ' + mes;
+  // HTML apto para correo: tablas, bgcolor y estilos en línea (Gmail y Outlook ignoran CSS moderno)
+  var BORDE = '1px solid #CFCBE2', NAVY = '#1B1640', LILA = '#EEEDF5';
   var kpi = function (t, v, d) {
-    return '<td style="background:#1B1640;color:#EEEBFB;border-radius:12px;padding:14px 16px;width:25%;vertical-align:top"><div style="font-size:11px;letter-spacing:.06em;color:#B9B3DA;text-transform:uppercase">' + t +
-      '</div><div style="font-size:20px;font-weight:600;margin:4px 0">' + v + '</div><div style="font-size:12px;color:#B9B3DA">' + d + '</div></td>';
+    return '<td width="25%" valign="top" style="padding:6px">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate"><tr>' +
+      '<td bgcolor="' + NAVY + '" style="background-color:' + NAVY + ';border:1px solid ' + NAVY + ';border-radius:10px;padding:12px 14px">' +
+      '<div style="font-size:10px;letter-spacing:1px;color:#C9C2EE;text-transform:uppercase;font-family:Arial,sans-serif">' + t + '</div>' +
+      '<div style="font-size:19px;font-weight:bold;color:#FFFFFF;margin:4px 0;white-space:nowrap;font-family:Arial,sans-serif">' + v + '</div>' +
+      '<div style="font-size:11px;color:#C9C2EE;font-family:Arial,sans-serif">' + d + '</div></td></tr></table></td>';
   };
-  var tabla = function (cab, filas, vacio) {
-    return filas ? '<table cellpadding="8" style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#EEEDF5">' +
-      cab.map(function (c) { return '<th align="left">' + c + '</th>'; }).join('') + '</tr>' + filas + '</table>' : '<p style="color:#8A86A6">' + vacio + '</p>';
+  var th = function (c, der) { return '<th align="' + (der ? 'right' : 'left') + '" bgcolor="' + LILA + '" style="background-color:' + LILA + ';border:' + BORDE + ';padding:7px 9px;font-size:12px;color:' + NAVY + '">' + c + '</th>'; };
+  var tabla = function (cab, der, filas, vacio) {
+    if (!filas) return '<p style="color:#8A86A6;font-size:13px">' + vacio + '</p>';
+    return '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:' + BORDE + ';font-size:13px;font-family:Arial,sans-serif">' +
+      '<tr>' + cab.map(function (c, i) { return th(c, der.indexOf(i) >= 0); }).join('') + '</tr>' + filas + '</table>';
   };
-  var html = '<div style="font-family:Arial,Helvetica,sans-serif;color:#1B1640;max-width:760px;background:#F6F6FA;padding:20px;border-radius:14px">' +
-    '<h2 style="margin:0 0 4px">Importaciones · ' + mes + '</h2><p style="margin:0 0 16px;color:#4F4A70">Resumen automático al ' + fecha(hoyS) +
-    '. Detalle en vivo en <a href="' + APP_URL + '">la app de importaciones</a>.</p>' +
-    '<table cellspacing="8" style="width:100%"><tr>' +
-    kpi('En curso', curso.length + ' importaciones', curso.map(function (e) { return e.id; }).join(', ') || '—') +
+  var td = function (v, der, extra) { return '<td align="' + (der ? 'right' : 'left') + '" style="border:' + BORDE + ';padding:7px 9px;color:' + NAVY + (der ? ';white-space:nowrap' : '') + (extra || '') + '">' + v + '</td>'; };
+  filasImp = curso.map(function (e) {
+    var eta = e.bodega || e.bodega_est || e.eta || e.eta_est || '';
+    return '<tr>' + td('<b>' + e.id + '</b><br><span style="color:#8A86A6;font-size:12px">' + (e.ref || '') + '</span>') + td(e.estado) + td(e.proveedor || '') +
+      td(e.unidades || '—', true) + td('US$ ' + Math.round(Number(e.fob_usd) || 0).toLocaleString('es-CL'), true) + td(fecha(eta), false, ';white-space:nowrap') + '</tr>';
+  }).join('');
+  filasPag = p30.map(function (p) {
+    return '<tr>' + td(fecha(p.fecha) + (String(p.fecha_estimada).indexOf('S') === 0 ? '<br><span style="color:#8A86A6;font-size:11px">estimada</span>' : ''), false, ';white-space:nowrap') +
+      td(p.importacion) + td(p.concepto) + td(p.moneda === 'USD' ? 'US$ ' + Number(p.monto).toLocaleString('es-CL') : clp(p.monto), true) + '</tr>';
+  }).join('');
+  var boton = '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 4px"><tr><td bgcolor="#6D49F2" style="background-color:#6D49F2;border-radius:8px">' +
+    '<a href="' + APP_URL + '" target="_blank" style="display:inline-block;padding:11px 22px;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#FFFFFF;text-decoration:none;border-radius:8px">Abrir app de importaciones →</a></td></tr></table>';
+  var html = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#E7E8EF" style="background-color:#E7E8EF"><tr><td align="center" style="padding:16px 8px">' +
+    '<table role="presentation" width="720" cellpadding="0" cellspacing="0" bgcolor="#F6F6FA" style="max-width:720px;width:100%;background-color:#F6F6FA;border:' + BORDE + ';border-radius:12px;font-family:Arial,sans-serif;color:' + NAVY + '"><tr><td style="padding:20px 22px">' +
+    '<div style="font-size:22px;font-weight:bold">Importaciones · ' + mes + '</div>' +
+    '<div style="font-size:13px;color:#4F4A70;margin:4px 0 10px">Resumen automático al ' + fecha(hoyS) + '. El detalle en vivo (costeos, factores, reposición) está en la app:</div>' + boton +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 4px;table-layout:fixed"><tr>' +
+    kpi('Importaciones en curso', String(curso.length), curso.map(function (e) { return e.id; }).join(', ') || '—') +
     kpi('Por pagar 30 días', clp(suma(p30)), p30.length + ' pagos') +
     kpi('Por pagar 90 días', clp(suma(p90)), p90.length + ' pagos') +
-    kpi('Pagado ' + y, clp(pagY), 'vs ' + ya + ' a la misma fecha: ' + yoy) + '</tr></table>' +
-    '<h3 style="margin:18px 0 6px">Importaciones en curso</h3>' + tabla(['Importación', 'Estado', 'Proveedor', 'Unidades', 'FOB', 'ETA bodega'], filasImp, 'No hay importaciones en curso.') +
-    '<h3 style="margin:18px 0 6px">Pagos de los próximos 30 días</h3>' + tabla(['Fecha', 'Importación', 'Concepto', 'Monto'], filasPag, 'Sin pagos en los próximos 30 días.') +
-    '<h3 style="margin:18px 0 6px">Stock</h3><p style="margin:0">Inventario valorizado: <b>' + clp(valor) + '</b> (corte Defontana ' + fecha(cfg.stock_fecha) + ').<br>' +
-    (quiebres.length ? 'Sin stock y con venta: <b>' + quiebres.join(', ') + '</b>.' : 'Sin quiebres de stock.') + '</p>' +
-    '<p style="margin:18px 0 0;font-size:12px;color:#8A86A6">Montos en USD sin T/C registrado se valorizan a ' + tc +
-    '. Para ver costeos, factores y reposición por SKU entra a ' + APP_URL + ' con tu cuenta de Google.</p></div>';
+    kpi('Pagado ' + y, clp(pagY), 'vs ' + ya + ' a la fecha: ' + yoy) + '</tr></table>' +
+    '<div style="font-size:16px;font-weight:bold;margin:18px 0 8px">Importaciones en curso</div>' + tabla(['Importación', 'Estado', 'Proveedor', 'Unidades', 'FOB', 'ETA bodega'], [3, 4], filasImp, 'No hay importaciones en curso.') +
+    '<div style="font-size:16px;font-weight:bold;margin:18px 0 8px">Pagos de los próximos 30 días</div>' + tabla(['Fecha', 'Importación', 'Concepto', 'Monto'], [3], filasPag, 'Sin pagos en los próximos 30 días.') +
+    '<div style="font-size:16px;font-weight:bold;margin:18px 0 8px">Stock</div>' +
+    '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:' + BORDE + ';font-size:13px">' +
+    '<tr>' + td('Inventario valorizado') + td('<b>' + clp(valor) + '</b> <span style="color:#8A86A6">(corte Defontana ' + fecha(cfg.stock_fecha) + ')</span>') + '</tr>' +
+    '<tr>' + td('Sin stock y con venta') + td(quiebres.length ? '<b>' + quiebres.join('<br>') + '</b>' : 'Sin quiebres de stock') + '</tr></table>' +
+    '<div style="font-size:11px;color:#8A86A6;margin-top:16px">Montos en USD sin T/C registrado se valorizan a ' + tc + '. Para entrar a la app usa tu cuenta de Google de la empresa: ' + APP_URL + '</div>' +
+    '</td></tr></table></td></tr></table>';
   var texto = asunto + '\n\nEn curso: ' + curso.length + ' importaciones. Por pagar 30 días: ' + clp(suma(p30)) + '. Por pagar 90 días: ' + clp(suma(p90)) +
     '. Pagado ' + y + ': ' + clp(pagY) + ' (vs ' + ya + ': ' + yoy + ').\nDetalle: ' + APP_URL;
   return { asunto: asunto, html: html, texto: texto };
