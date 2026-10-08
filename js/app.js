@@ -436,7 +436,7 @@ function tablaItems(ps,meses){
   const ytd=p=>p.fecha.slice(0,4)===y&&p.fecha<=HOY_S, ytdA=p=>p.fecha.slice(0,4)===ya&&p.fecha.slice(5)<=corte;
   const fila=f=>{const a=pag.filter(p=>f(p)), v=k=>a.filter(k).reduce((s,p)=>s+p.clp,0);return {per:v(enPer),ytd:v(ytd),ant:v(ytdA)}};
   const rows=CAT_ORD.map(c=>({c,...fila(p=>p.cat===c)})), tot=fila(()=>true);
-  const yoy=(a,b)=>!b?(a?'<span class="hint">nuevo</span>':'—'):`<span style="color:${a>b?'var(--bad)':'var(--ok)'};font-weight:600">${a>b?'+':''}${fmtN((a/b-1)*100,1)}%</span>`;
+  const yoy=(a,b)=>!b?(a?'<span class="hint">nuevo</span>':'—'):`<span style="color:${a>=b?'var(--ok)':'var(--bad)'};font-weight:600">${a>b?'+':''}${fmtN((a/b-1)*100,1)}%</span>`;
   const lblPer=cajaMesSel?mesLbl(cajaMesSel,{month:'long',year:'numeric'}):`${mesLbl(per[0])} → ${mesLbl(per[per.length-1])}`;
   const fechaCorte=D(HOY_S).toLocaleDateString('es-CL',{day:'numeric',month:'short'}).replace('.','');
   const tr=(lbl,r,cls='')=>`<tr class="${cls}"><td>${lbl}</td><td class="r">${fmtCLP(r.per)}</td><td class="r">${fmtCLP(r.ytd)}</td><td class="r hint">${fmtCLP(r.ant)}</td><td class="r">${yoy(r.ytd,r.ant)}</td></tr>`;
@@ -444,7 +444,7 @@ function tablaItems(ps,meses){
     <div class="tbl-wrap"><table><thead><tr><th>Ítem</th><th class="r">Período filtrado<div class="hint" style="font-weight:400">${lblPer}</div></th><th class="r">Total año ${y}<div class="hint" style="font-weight:400">al ${fechaCorte}</div></th><th class="r">${ya}<div class="hint" style="font-weight:400">al ${fechaCorte}</div></th><th class="r">Variación YoY</th></tr></thead><tbody>
     ${rows.map(r=>tr(`<span style="display:inline-flex;align-items:center;gap:8px"><i style="width:10px;height:10px;border-radius:3px;background:${CAT[r.c][1]};display:inline-block"></i>${CAT[r.c][0]}</span>`,r)).join('')}
     ${tr('<b>Total</b>',tot,'tot')}
-    </tbody></table></div><p class="hint" style="margin:8px 0 0">Una variación positiva (en rojo) significa que este año se ha pagado más que el anterior a la misma fecha.</p></div>`;
+    </tbody></table></div><p class="hint" style="margin:8px 0 0">Variación positiva en verde y negativa en rojo, comparando lo pagado este año con el anterior a la misma fecha.</p></div>`;
 }
 function bindCaja(){
   document.querySelectorAll('#rng button').forEach(b=>b.onclick=()=>{cajaRango=b.dataset.r;render()});
