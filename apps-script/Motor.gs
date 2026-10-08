@@ -246,3 +246,106 @@ function escribirCelda_(ss, n, cab, fila, col, valor) {
 function log_(ss, accion, imp, detalle) {
   try { agregar_(ss, 'BD_Log', [[new Date().toISOString(), Session.getActiveUser().getEmail() || 'motor', accion, imp, detalle]]); } catch (e) {}
 }
+
+/* ================= Reporte mensual a gerencia =================
+ * Se envía solo el PRIMER JUEVES de cada mes: el disparador corre todos los jueves a las 8:00
+ * y revisa si es el primero del mes. Destinatarios: BD_Config → reporte_destinatarios (separados por coma).
+ *   instalarReporte()  → ejecutar UNA vez para crear el disparador.
+ *   probarReporte()    → envía el reporte de hoy solo a tu correo, para revisarlo.
+ */
+var APP_URL = 'https://jtunon-dev.github.io/importaciones/';
+
+function instalarReporte() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'reporteMensual') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('reporteMensual').timeBased().onWeekDay(ScriptApp.WeekDay.THURSDAY).atHour(8).create();
+}
+
+function reporteMensual(e) {
+  var hoy = new Date();
+  var forzar = e === true;
+  if (!forzar && hoy.getDate() > 7) return; // solo el primer jueves del mes
+  var ss = SpreadsheetApp.getActive(), cfg = leerConfig_(ss);
+  var para = String(cfg.reporte_destinatarios || '').trim();
+  if (!para) throw new Error('Falta reporte_destinatarios en BD_Config');
+  var r = armarReporte_(ss, cfg, hoy);
+  GmailApp.sendEmail(para, r.asunto, r.texto, { htmlBody: r.html, name: 'Importaciones retail.cl' });
+  log_(ss, 'Reporte mensual', '', 'Enviado a ' + para);
+}
+
+function probarReporte() {
+  var ss = SpreadsheetApp.getActive(), cfg = leerConfig_(ss);
+  var r = armarReporte_(ss, cfg, new Date());
+  GmailApp.sendEmail(Session.getActiveUser().getEmail(), '[Prueba] ' + r.asunto, r.texto, { htmlBody: r.html, name: 'Importaciones retail.cl' });
+}
+
+function armarReporte_(ss, cfg, hoy) {
+  var tz = ss.getSpreadsheetTimeZone() || 'America/Santiago';
+  var f = function (d) { return Utilities.formatDate(d, tz, 'yyyy-MM-dd'); };
+  var hoyS = f(hoy), en30 = f(new Date(hoy.getTime() + 30 * 864e5)), en90 = f(new Date(hoy.getTime() + 90 * 864e5));
+  var tc = Number(cfg.tc_ref) || 935;
+  var clp = function (n) { return '$' + Math.round(n).toLocaleString('es-CL'); };
+  var fecha = function (s) { if (!s) return '—'; var p = String(s).split('-'); return p.length < 3 ? s : p[2] + '-' + p[1] + '-' + p[0].slice(2); };
+  var imps = leerTabla_(ss, 'BD_Importaciones').filas;
+  var pagos = leerTabla_(ss, 'BD_Pagos').filas;
+  var stock = leerTabla_(ss, 'BD_Stock').filas;
+  var aClp = function (p) { var m = Number(p.monto) || 0; return p.moneda === 'USD' ? m * (Number(p.tc) || tc) : m; };
+  var suma = function (a) { return a.reduce(function (s, p) { return s + aClp(p); }, 0); };
+
+  // Importaciones en curso
+  var curso = imps.filter(function (e) { return e.estado && e.estado !== 'Recibido'; });
+  var filasImp = curso.map(function (e) {
+    var eta = e.bodega || e.bodega_est || e.eta || e.eta_est || '';
+    return '<tr><td><b>' + e.id + '</b><br><span style="color:#8A86A6">' + (e.ref || '') + '</span></td><td>' + e.estado + '</td><td>' + (e.proveedor || '') +
+      '</td><td align="right">' + (e.unidades || '—') + '</td><td align="right">US$ ' + Math.round(Number(e.fob_usd) || 0).toLocaleString('es-CL') +
+      '</td><td>' + fecha(eta) + '</td></tr>';
+  }).join('');
+
+  // Pagos
+  var futuros = pagos.filter(function (p) { return p.fecha >= hoyS; });
+  var p30 = futuros.filter(function (p) { return p.fecha <= en30; }), p90 = futuros.filter(function (p) { return p.fecha <= en90; });
+  var y = hoyS.slice(0, 4), ya = String(+y - 1), corte = hoyS.slice(5);
+  var pagY = suma(pagos.filter(function (p) { return p.fecha && String(p.fecha).slice(0, 4) === y && p.fecha < hoyS; }));
+  var pagYa = suma(pagos.filter(function (p) { return p.fecha && String(p.fecha).slice(0, 4) === ya && String(p.fecha).slice(5) < corte; }));
+  var yoyN = pagYa ? (pagY / pagYa - 1) * 100 : null;
+  var yoy = yoyN == null ? '—' : (yoyN > 0 ? '+' : '') + yoyN.toFixed(1).replace('.', ',') + '%';
+  var filasPag = p30.sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; }).map(function (p) {
+    return '<tr><td>' + fecha(p.fecha) + (String(p.fecha_estimada).indexOf('S') === 0 ? ' <span style="color:#8A86A6">(est.)</span>' : '') + '</td><td>' + p.importacion + '</td><td>' + p.concepto +
+      '</td><td align="right">' + (p.moneda === 'USD' ? 'US$ ' + Number(p.monto).toLocaleString('es-CL') : clp(p.monto)) + '</td></tr>';
+  }).join('');
+
+  // Stock: valor del inventario y SKU sin stock que sí venden
+  var valor = stock.reduce(function (s, x) { return s + (Number(x.valor_clp) || 0); }, 0);
+  var quiebres = stock.filter(function (x) {
+    if (String(x.descontinuado).indexOf('S') === 0 || Number(x.stock) > 0) return false;
+    var v = 0; for (var i = 1; i <= 12; i++) v += Number(x['v' + (i < 10 ? '0' : '') + i]) || 0;
+    return v > 0;
+  }).map(function (x) { return x.nombre + ' (' + x.sku + ')'; });
+
+  var mes = Utilities.formatDate(hoy, tz, 'MMMM yyyy');
+  var asunto = 'Importaciones retail.cl · reporte ' + mes;
+  var kpi = function (t, v, d) {
+    return '<td style="background:#1B1640;color:#EEEBFB;border-radius:12px;padding:14px 16px;width:25%;vertical-align:top"><div style="font-size:11px;letter-spacing:.06em;color:#B9B3DA;text-transform:uppercase">' + t +
+      '</div><div style="font-size:20px;font-weight:600;margin:4px 0">' + v + '</div><div style="font-size:12px;color:#B9B3DA">' + d + '</div></td>';
+  };
+  var tabla = function (cab, filas, vacio) {
+    return filas ? '<table cellpadding="8" style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#EEEDF5">' +
+      cab.map(function (c) { return '<th align="left">' + c + '</th>'; }).join('') + '</tr>' + filas + '</table>' : '<p style="color:#8A86A6">' + vacio + '</p>';
+  };
+  var html = '<div style="font-family:Arial,Helvetica,sans-serif;color:#1B1640;max-width:760px;background:#F6F6FA;padding:20px;border-radius:14px">' +
+    '<h2 style="margin:0 0 4px">Importaciones · ' + mes + '</h2><p style="margin:0 0 16px;color:#4F4A70">Resumen automático al ' + fecha(hoyS) +
+    '. Detalle en vivo en <a href="' + APP_URL + '">la app de importaciones</a>.</p>' +
+    '<table cellspacing="8" style="width:100%"><tr>' +
+    kpi('En curso', curso.length + ' importaciones', curso.map(function (e) { return e.id; }).join(', ') || '—') +
+    kpi('Por pagar 30 días', clp(suma(p30)), p30.length + ' pagos') +
+    kpi('Por pagar 90 días', clp(suma(p90)), p90.length + ' pagos') +
+    kpi('Pagado ' + y, clp(pagY), 'vs ' + ya + ' a la misma fecha: ' + yoy) + '</tr></table>' +
+    '<h3 style="margin:18px 0 6px">Importaciones en curso</h3>' + tabla(['Importación', 'Estado', 'Proveedor', 'Unidades', 'FOB', 'ETA bodega'], filasImp, 'No hay importaciones en curso.') +
+    '<h3 style="margin:18px 0 6px">Pagos de los próximos 30 días</h3>' + tabla(['Fecha', 'Importación', 'Concepto', 'Monto'], filasPag, 'Sin pagos en los próximos 30 días.') +
+    '<h3 style="margin:18px 0 6px">Stock</h3><p style="margin:0">Inventario valorizado: <b>' + clp(valor) + '</b> (corte Defontana ' + fecha(cfg.stock_fecha) + ').<br>' +
+    (quiebres.length ? 'Sin stock y con venta: <b>' + quiebres.join(', ') + '</b>.' : 'Sin quiebres de stock.') + '</p>' +
+    '<p style="margin:18px 0 0;font-size:12px;color:#8A86A6">Montos en USD sin T/C registrado se valorizan a ' + tc +
+    '. Para ver costeos, factores y reposición por SKU entra a ' + APP_URL + ' con tu cuenta de Google.</p></div>';
+  var texto = asunto + '\n\nEn curso: ' + curso.length + ' importaciones. Por pagar 30 días: ' + clp(suma(p30)) + '. Por pagar 90 días: ' + clp(suma(p90)) +
+    '. Pagado ' + y + ': ' + clp(pagY) + ' (vs ' + ya + ': ' + yoy + ').\nDetalle: ' + APP_URL;
+  return { asunto: asunto, html: html, texto: texto };
+}
