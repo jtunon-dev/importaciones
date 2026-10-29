@@ -410,7 +410,7 @@ function armarReporte_(ss, cfg, hoy) {
       td(p.importacion) + td(p.concepto) + td(p.moneda === 'USD' ? 'US$ ' + Number(p.monto).toLocaleString('es-CL') : clp(p.monto), true) + '</tr>';
   }).join('');
   var boton = '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 4px"><tr><td bgcolor="#6D49F2" style="background-color:#6D49F2;border-radius:8px">' +
-    '<a href="' + APP_URL + '" target="_blank" style="display:inline-block;padding:11px 22px;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#FFFFFF;text-decoration:none;border-radius:8px">Abrir app de importaciones →</a></td></tr></table>';
+    '<a href="' + APP_URL + '" style="display:inline-block;padding:11px 22px;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#FFFFFF;text-decoration:none;border-radius:8px">Abrir app de importaciones →</a></td></tr></table>';
   var estilo = '<style>@media only screen and (max-width:520px){' +
     '.envoltorio{padding:8px 0!important}.marco{padding:14px 10px!important}.kpi{padding:10px 10px!important}.kpi-v{font-size:17px!important}' +
     '.tbl th,.tbl td{padding:5px 5px!important;font-size:11.5px!important}.ocultar-m{display:none!important}.titulo{font-size:19px!important}}</style>';
