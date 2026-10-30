@@ -76,7 +76,7 @@ function renderTabs(){
   $('#tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(b.dataset.k==='nueva'){nuevaFicha();return}cur=b.dataset.k;try{localStorage.setItem('pc-tab',cur)}catch(e){}render();window.scrollTo(0,0)});
 }
 function topline(){
-  const hh=CARGADO_EN?CARGADO_EN.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}):'—';
+  const lec=window.ENLACE_LEIDO||CARGADO_EN, hh=lec?(window.ENLACE_LEIDO?fmtD(ISO(lec))+' ':'')+lec.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}):'—';
   const pend=CORREOS.filter(c=>c.estado==='por asignar').length;
   const qa=window.ENTORNO==='QA';
   return `<div class="topline"><span class="title"><b>retail.cl</b> · Importaciones</span>${qa?'<span class="chip s-quiebre" title="Ambiente de pruebas: los cambios no tocan el Sheets de producción">QA · datos de prueba</span>':''}
