@@ -15,7 +15,7 @@
   if (!k || !CONFIG.WEBAPP_URL) return;
   window.ENTORNO = 'ENLACE';
 
-  // El servidor entrega una "foto" de los datos que el motor renueva cada 15 min (window.ENLACE_LEIDO = su hora).
+  // El servidor entrega una "foto" de los datos que el motor renueva cada mañana (window.ENLACE_LEIDO = su hora).
   // La última foto queda guardada en este navegador: la app abre al instante con ella y revisa por detrás
   // si hay una más nueva (el Apps Script tarda unos segundos en responder).
   const DATOS = 'imp-enlace-datos';

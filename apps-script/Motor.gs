@@ -3,8 +3,8 @@
  * Va pegado en el editor de Apps Script del Sheets IMPORTACIONES 2EBOX (Extensiones → Apps Script)
  * y corre con la cuenta de quien lo instala (Gmail y Drive de esa cuenta).
  *
- *   instalar()      → ejecutar UNA vez: crea el disparador cada 15 minutos y hace la primera pasada.
- *   sincronizar()   → lo que corre cada 15 minutos (también se puede ejecutar a mano).
+ *   instalar()      → ejecutar UNA vez: crea el disparador diario (7:00 hora de Chile) y hace la primera pasada.
+ *   sincronizar()   → lo que corre cada mañana (también se puede ejecutar a mano para actualizar al momento).
  *   desinstalar()   → borra el disparador.
  *
  * Qué hace cada pasada:
@@ -20,7 +20,7 @@ var MAX_HILOS = 150;
 
 function instalar() {
   desinstalar();
-  ScriptApp.newTrigger('sincronizar').timeBased().everyMinutes(15).create();
+  ScriptApp.newTrigger('sincronizar').timeBased().everyDays(1).atHour(7).nearMinute(0).inTimezone('America/Santiago').create();
   sincronizar();
 }
 
@@ -520,7 +520,7 @@ function doGet(e) {
   return json_({ ok: true, usuario: { email: a.email, name: a.nombre || a.email }, leido: foto.leido, tablas: foto.tablas });
 }
 
-/* "Foto" de los datos para los enlaces: la arma el motor en cada pasada (cada 15 min) y queda guardada en
+/* "Foto" de los datos para los enlaces: la arma el motor en cada pasada (cada mañana) y queda guardada en
    las propiedades del script, así la app no espera la lectura de 8 pestañas cada vez que alguien abre. */
 function guardarFoto_(ss) {
   var tz = ss.getSpreadsheetTimeZone() || 'America/Santiago', tablas = {};
