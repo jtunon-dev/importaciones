@@ -1320,6 +1320,12 @@ async function entrar(){
 }
 function boot(){
   if(window.ENTORNO==='QA'){pantalla('<div class="panel"><h2>Cargando QA…</h2></div>');G.init().then(entrar).catch(err=>pantalla(`<div class="panel"><h2>No se pudo abrir QA</h2><p class="err">${esc(err.message)}</p></div>`));return}
+  if(window.ENTORNO==='ENLACE'){
+    pantalla('<div class="panel"><h2>Cargando…</h2><p class="hint">Validando tu acceso.</p></div>');
+    G.init().then(entrar).catch(err=>pantalla(err.sinAcceso
+      ?`<div class="panel" style="display:grid;gap:12px;text-align:center;padding:32px"><h2>Acceso no autorizado</h2><p>Este enlace no es válido o tu acceso fue desactivado. Si necesitas ver las importaciones, pídele acceso a Jorge Tuñón.</p><div><button class="btn" onclick="location.reload()">Entrar con Google</button></div></div>`
+      :`<div class="panel"><h2>No se pudo abrir</h2><p class="err">${esc(err.message)}</p><button class="btn primary" onclick="location.reload()">Reintentar</button></div>`));
+    return}
   if(!window.google?.accounts?.oauth2){setTimeout(boot,150);return}
   G.init();
   if(G.conectado()){entrar();return}

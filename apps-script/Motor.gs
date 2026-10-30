@@ -297,18 +297,23 @@ function reporteMensual(e) {
   var ss = SpreadsheetApp.getActive(), cfg = leerConfig_(ss);
   var para = String(cfg.reporte_destinatarios || DESTINATARIOS).trim();
   if (!para) throw new Error('Falta reporte_destinatarios en BD_Config');
-  var r = armarReporte_(ss, cfg, hoy);
-  GmailApp.sendEmail(para, r.asunto, r.texto, { htmlBody: r.html, name: 'Importaciones retail.cl' });
+  // Un correo por persona: cada uno lleva su enlace personal (entra sin iniciar sesión con Google).
+  var acc = accesos_(ss);
+  para.split(',').map(function (x) { return x.trim(); }).filter(String).forEach(function (email) {
+    var r = armarReporte_(ss, cfg, hoy, enlace_(acc, email));
+    GmailApp.sendEmail(email, r.asunto, r.texto, { htmlBody: r.html, name: 'Importaciones retail.cl' });
+  });
   log_(ss, 'Reporte mensual', '', 'Enviado a ' + para);
 }
 
 function probarReporte() {
-  var ss = SpreadsheetApp.getActive(), cfg = leerConfig_(ss);
-  var r = armarReporte_(ss, cfg, new Date());
-  GmailApp.sendEmail(Session.getActiveUser().getEmail(), '[Prueba] ' + r.asunto, r.texto, { htmlBody: r.html, name: 'Importaciones retail.cl' });
+  var ss = SpreadsheetApp.getActive(), cfg = leerConfig_(ss), yo = Session.getActiveUser().getEmail();
+  var r = armarReporte_(ss, cfg, new Date(), enlace_(accesos_(ss), yo));
+  GmailApp.sendEmail(yo, '[Prueba] ' + r.asunto, r.texto, { htmlBody: r.html, name: 'Importaciones retail.cl' });
 }
 
-function armarReporte_(ss, cfg, hoy) {
+function armarReporte_(ss, cfg, hoy, url) {
+  url = url || APP_URL;
   var tz = ss.getSpreadsheetTimeZone() || 'America/Santiago';
   var f = function (d) { return Utilities.formatDate(d, tz, 'yyyy-MM-dd'); };
   var hoyS = f(hoy), en30 = f(new Date(hoy.getTime() + 30 * 864e5)), en90 = f(new Date(hoy.getTime() + 90 * 864e5));
@@ -410,7 +415,7 @@ function armarReporte_(ss, cfg, hoy) {
       td(p.importacion) + td(p.concepto) + td(p.moneda === 'USD' ? 'US$ ' + Number(p.monto).toLocaleString('es-CL') : clp(p.monto), true) + '</tr>';
   }).join('');
   var boton = '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 4px"><tr><td bgcolor="#6D49F2" style="background-color:#6D49F2;border-radius:8px">' +
-    '<a href="' + APP_URL + '" style="display:inline-block;padding:11px 22px;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#FFFFFF;text-decoration:none;border-radius:8px">Abrir app de importaciones →</a></td></tr></table>';
+    '<a href="' + url + '" style="display:inline-block;padding:11px 22px;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#FFFFFF;text-decoration:none;border-radius:8px">Abrir app de importaciones →</a></td></tr></table>';
   var estilo = '<style>@media only screen and (max-width:520px){' +
     '.envoltorio{padding:8px 0!important}.marco{padding:14px 10px!important}.kpi{padding:10px 10px!important}.kpi-v{font-size:17px!important}' +
     '.tbl th,.tbl td{padding:5px 5px!important;font-size:11.5px!important}.ocultar-m{display:none!important}.titulo{font-size:19px!important}}</style>';
@@ -432,9 +437,92 @@ function armarReporte_(ss, cfg, hoy) {
         td('<span style="background-color:' + chip[0] + ';color:' + chip[1] + ';font-weight:bold;font-size:11px;padding:2px 8px;border-radius:9px;white-space:nowrap">' + chip[2] + '</span><br><span style="font-size:12px">' + a.sit + '</span>') +
         td(String(Number(a.x.stock) || 0), true) + td(a.prom.toFixed(1).replace('.', ','), true, '', true) + td(a.sug ? a.sug + ' u' : '—', true) + '</tr>';
     }).join(''), 'Sin productos sin stock ni con urgencia de reposición.', [3]) +
-    '<div style="font-size:11px;color:#8A86A6;margin-top:16px">Montos en USD sin T/C registrado se valorizan a ' + tc + '. Para entrar a la app usa tu cuenta de Google de la empresa: ' + APP_URL + '</div>' +
+    '<div style="font-size:11px;color:#8A86A6;margin-top:16px">Montos en USD sin T/C registrado se valorizan a ' + tc + '. El botón es tu enlace personal de acceso: no lo reenvíes.</div>' +
     '</td></tr></table></td></tr></table>';
   var texto = asunto + '\n\nEn curso: ' + curso.length + ' importaciones. Por pagar 30 días: ' + clp(suma(p30)) + '. Por pagar 90 días: ' + clp(suma(p90)) +
-    '. Pagado ' + y + ': ' + clp(pagY) + ' (vs ' + ya + ': ' + yoy + ').\nDetalle: ' + APP_URL;
+    '. Pagado ' + y + ': ' + clp(pagY) + ' (vs ' + ya + ': ' + yoy + ').\nDetalle: ' + url;
   return { asunto: asunto, html: html, texto: texto };
 }
+
+/* ================= Acceso por enlace personal (sin iniciar sesión con Google) =================
+ * Lista de contactos: pestaña BD_Accesos (email | nombre | activo | ultimo_acceso).
+ *   - Dar acceso: agrega una fila con su email y activo = SI.
+ *   - Quitarlo: activo = NO (o borra la fila). Su enlace deja de funcionar al instante.
+ * Cada enlace lleva una clave calculada con el email y un secreto guardado en las propiedades del
+ * script (no está en el Sheets ni en GitHub). El reporte mensual pone el enlace de cada uno en su botón.
+ * La app (GitHub) llama a esta aplicación web con la clave y recibe los datos en SOLO LECTURA.
+ *   crearAccesos()   → ejecutar UNA vez: crea BD_Accesos con los destinatarios del reporte.
+ *   verEnlaces()     → muestra en el registro el enlace de cada contacto activo (para mandarlo a mano).
+ *   renovarClaves()  → invalida TODOS los enlaces (si uno se filtró); los nuevos van en el próximo reporte.
+ * Publicar: Implementar → Nueva implementación → Aplicación web · Ejecutar como: Yo · Acceso: Cualquier usuario.
+ */
+var TABS_ENLACE = ['BD_Importaciones', 'BD_Costeo', 'BD_Productos', 'BD_Pagos', 'BD_Documentos', 'BD_Correos', 'BD_Stock', 'BD_Config'];
+
+function crearAccesos() {
+  var ss = SpreadsheetApp.getActive(), h = ss.getSheetByName('BD_Accesos');
+  if (!h) {
+    h = ss.insertSheet('BD_Accesos');
+    h.getRange(1, 1, 1, 4).setValues([['email', 'nombre', 'activo', 'ultimo_acceso']]).setFontWeight('bold');
+    h.setFrozenRows(1);
+  }
+  var hay = {}; accesos_(ss).forEach(function (a) { hay[a.email] = true; });
+  var cfg = leerConfig_(ss), nuevos = [];
+  String(cfg.reporte_destinatarios || DESTINATARIOS).split(',').forEach(function (e) {
+    e = e.trim().toLowerCase(); if (e && !hay[e]) nuevos.push([e, '', 'SI', '']);
+  });
+  if (nuevos.length) h.getRange(h.getLastRow() + 1, 1, nuevos.length, 4).setValues(nuevos);
+  verEnlaces();
+}
+
+function verEnlaces() {
+  var acc = accesos_(SpreadsheetApp.getActive());
+  acc.filter(function (a) { return a.activo; }).forEach(function (a) { Logger.log(a.email + '  →  ' + enlace_(acc, a.email)); });
+}
+
+function renovarClaves() {
+  PropertiesService.getScriptProperties().setProperty('SECRETO_ENLACES', Utilities.getUuid() + Utilities.getUuid());
+  verEnlaces();
+}
+
+function secreto_() {
+  var p = PropertiesService.getScriptProperties(), s = p.getProperty('SECRETO_ENLACES');
+  if (!s) { s = Utilities.getUuid() + Utilities.getUuid(); p.setProperty('SECRETO_ENLACES', s); }
+  return s;
+}
+function clave_(email) {
+  var b = Utilities.computeHmacSha256Signature(String(email).trim().toLowerCase(), secreto_());
+  return Utilities.base64EncodeWebSafe(b).replace(/=+$/, '').slice(0, 32);
+}
+function accesos_(ss) {
+  var h = ss.getSheetByName('BD_Accesos'); if (!h || h.getLastRow() < 2) return [];
+  return leerTabla_(ss, 'BD_Accesos').filas.map(function (r) {
+    return { email: String(r.email || '').trim().toLowerCase(), nombre: r.nombre || '', activo: /^(si|sí|s|x|1|true)$/i.test(String(r.activo).trim()), fila: r._fila };
+  }).filter(function (a) { return a.email; });
+}
+// Enlace personal si el email está activo en BD_Accesos; si no, el enlace normal (que pide Google).
+function enlace_(acc, email) {
+  email = String(email || '').trim().toLowerCase();
+  var a = acc.filter(function (x) { return x.email === email && x.activo; })[0];
+  return a ? APP_URL + '?k=' + clave_(email) : APP_URL;
+}
+
+function doGet(e) {
+  var k = String((e && e.parameter && e.parameter.k) || '');
+  var ss = SpreadsheetApp.getActive();
+  var a = k ? accesos_(ss).filter(function (x) { return x.activo && clave_(x.email) === k; })[0] : null;
+  if (!a) return json_({ ok: false, error: 'sin_acceso' });
+  var tz = ss.getSpreadsheetTimeZone() || 'America/Santiago', tablas = {};
+  TABS_ENLACE.forEach(function (t) {
+    var h = ss.getSheetByName(t); if (!h || !h.getLastRow()) { tablas[t] = []; return; }
+    tablas[t] = h.getRange(1, 1, h.getLastRow(), h.getLastColumn()).getValues().map(function (r) {
+      return r.map(function (v) { return v instanceof Date ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : v; });
+    });
+  });
+  try {
+    var j = cabecera_(ss, 'BD_Accesos').indexOf('ultimo_acceso');
+    if (j >= 0) ss.getSheetByName('BD_Accesos').getRange(a.fila, j + 1).setValue(new Date());
+    agregar_(ss, 'BD_Log', [[new Date().toISOString(), a.email, 'Acceso por enlace', '', '']]);
+  } catch (err) {}
+  return json_({ ok: true, usuario: { email: a.email, name: a.nombre || a.email }, tablas: tablas });
+}
+function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
