@@ -6,5 +6,5 @@ const CONFIG = {
   SPREADSHEET_ID: '1Ah_grqzyxqWicmsOTeZtYb8Cnvgb4bs14IOE7_tefFE', // IMPORTACIONES 2EBOX
   CARPETA_RAIZ_ID: '147LYsW2tFii-nto1MzMpbeOZQWn8fGso',            // carpeta padre de Chimeneas / Telones / Reolink
   // Aplicación web del Apps Script (doGet en Motor.gs): da acceso de solo lectura a quien trae un enlace personal válido.
-  WEBAPP_URL: ''
+  WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbzDQH13lyIMV73SYpGY4q_fZgGn_81ioA5w9VdtZFI6KpDBe75bsjozMtudZt1NxKFrEA/exec'
 };
