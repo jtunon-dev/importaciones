@@ -42,6 +42,7 @@ function sincronizar() {
     var resGmail = escanearGmail_(ss, cfg, imps) + (limpiados ? ', ' + limpiados + ' descartados (no son nuestros)' : '');
     var resAdj = guardarAdjuntos_(ss, imps);
     log_(ss, 'Motor', '', 'Drive: ' + resDrive + ' · Gmail: ' + resGmail + ' · Adjuntos: ' + resAdj);
+    try { guardarFoto_(ss); } catch (e) { log_(ss, 'Motor', '', 'No se pudo guardar la foto para enlaces: ' + e.message); }
   } finally {
     lock.releaseLock();
   }
@@ -511,6 +512,17 @@ function doGet(e) {
   var ss = SpreadsheetApp.getActive();
   var a = k ? accesos_(ss).filter(function (x) { return x.activo && clave_(x.email) === k; })[0] : null;
   if (!a) return json_({ ok: false, error: 'sin_acceso' });
+  var foto = leerFoto_() || guardarFoto_(ss);
+  try {
+    var j = cabecera_(ss, 'BD_Accesos').indexOf('ultimo_acceso');
+    if (j >= 0) ss.getSheetByName('BD_Accesos').getRange(a.fila, j + 1).setValue(new Date());
+  } catch (err) {}
+  return json_({ ok: true, usuario: { email: a.email, name: a.nombre || a.email }, leido: foto.leido, tablas: foto.tablas });
+}
+
+/* "Foto" de los datos para los enlaces: la arma el motor en cada pasada (cada 15 min) y queda guardada en
+   las propiedades del script, así la app no espera la lectura de 8 pestañas cada vez que alguien abre. */
+function guardarFoto_(ss) {
   var tz = ss.getSpreadsheetTimeZone() || 'America/Santiago', tablas = {};
   TABS_ENLACE.forEach(function (t) {
     var h = ss.getSheetByName(t); if (!h || !h.getLastRow()) { tablas[t] = []; return; }
@@ -518,11 +530,16 @@ function doGet(e) {
       return r.map(function (v) { return v instanceof Date ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : v; });
     });
   });
-  try {
-    var j = cabecera_(ss, 'BD_Accesos').indexOf('ultimo_acceso');
-    if (j >= 0) ss.getSheetByName('BD_Accesos').getRange(a.fila, j + 1).setValue(new Date());
-    agregar_(ss, 'BD_Log', [[new Date().toISOString(), a.email, 'Acceso por enlace', '', '']]);
-  } catch (err) {}
-  return json_({ ok: true, usuario: { email: a.email, name: a.nombre || a.email }, tablas: tablas });
+  var foto = { leido: new Date().toISOString(), tablas: tablas };
+  var s = JSON.stringify(foto), props = PropertiesService.getScriptProperties(), n = Math.ceil(s.length / 2500), o = { FOTO_N: String(n) };
+  for (var i = 0; i < n; i++) o['FOTO_' + i] = s.slice(i * 2500, (i + 1) * 2500);
+  props.setProperties(o);
+  return foto;
+}
+function leerFoto_() {
+  var p = PropertiesService.getScriptProperties().getProperties(), n = Number(p.FOTO_N) || 0, s = '';
+  if (!n) return null;
+  for (var i = 0; i < n; i++) s += p['FOTO_' + i] || '';
+  try { return JSON.parse(s); } catch (e) { return null; }
 }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }

@@ -15,26 +15,29 @@
   if (!k || !CONFIG.WEBAPP_URL) return;
   window.ENTORNO = 'ENLACE';
 
-  // La última lectura queda guardada en este navegador: la app abre al instante con ella y la
-  // actualiza por detrás (el Apps Script tarda varios segundos en responder).
+  // El servidor entrega una "foto" de los datos que el motor renueva cada 15 min (window.ENLACE_LEIDO = su hora).
+  // La última foto queda guardada en este navegador: la app abre al instante con ella y revisa por detrás
+  // si hay una más nueva (el Apps Script tarda unos segundos en responder).
   const DATOS = 'imp-enlace-datos';
-  let tablas = {}, yo = null, leido = 0;
+  let tablas = {}, yo = null, foto = '', leido = 0;
   const olvidar = () => { try { localStorage.removeItem(CLAVE); localStorage.removeItem(DATOS); } catch (e) {} };
+  function usar(d) { tablas = d.tablas || {}; yo = d.yo || d.usuario; foto = d.leido || ''; window.ENLACE_LEIDO = foto ? new Date(foto) : null; }
   async function traer() {
     let j;
     try { j = await (await fetch(CONFIG.WEBAPP_URL + '?k=' + encodeURIComponent(k))).json(); }
     catch (e) { throw new Error('No se pudo conectar con el servidor de la app. Revisa tu conexión y vuelve a intentar.'); }
     if (!j.ok) { olvidar(); const e = new Error('sin_acceso'); e.sinAcceso = true; throw e; }
-    tablas = j.tablas || {}; yo = j.usuario; leido = Date.now();
-    try { localStorage.setItem(DATOS, JSON.stringify({ k, tablas, yo, leido })); } catch (e) {}
+    const cambio = j.leido !== foto;
+    usar(j); leido = Date.now();
+    try { localStorage.setItem(DATOS, JSON.stringify({ k, tablas, yo, leido: foto })); } catch (e) {}
+    return cambio;
   }
   function iniciar() {
     let c = null;
     try { c = JSON.parse(localStorage.getItem(DATOS) || 'null'); } catch (e) {}
     if (!c || c.k !== k) return traer();
-    tablas = c.tablas; yo = c.yo; leido = Date.now();
-    window.ENLACE_LEIDO = new Date(c.leido);
-    traer().then(() => { window.ENLACE_LEIDO = null; if (typeof Store === 'object' && typeof render === 'function') Store.cargar().then(render).catch(() => {}); })
+    usar(c); leido = Date.now();
+    traer().then(cambio => { if (cambio && typeof Store === 'object' && typeof render === 'function') Store.cargar().then(render).catch(() => {}); })
       .catch(e => { if (e.sinAcceso) location.reload(); });
     return Promise.resolve();
   }
